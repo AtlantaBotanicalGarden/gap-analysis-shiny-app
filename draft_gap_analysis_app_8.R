@@ -72,13 +72,21 @@ ui <- fluidPage(
                        selected = "head")
       ),
       
-      # Add "Run Analysis" button ----
-      actionButton("runAnalysis", "Run Analysis"),
+      # Add "Run Analysis" button with padding
+      div(style = "padding-top: 20px; padding-bottom: 10px;", 
+          actionButton("loadMap", "Load Map")
+      ),
       
-      # Add slider input for buffer size ----
-      sliderInput("buffer", "Buffer Radius:", 
-                  min = 1, max = 50, value = 10)
+      # Add slider input for buffer size with padding
+      div(style = "padding-top: 10px; padding-bottom: 10px;", 
+          sliderInput("buffer", "Buffer Radius:", 
+                      min = 1, max = 50, value = 10)
+      ),
       
+      # Add "Run Analysis" button with padding
+      div(style = "padding-top: 10px; padding-bottom: 10px;", 
+          actionButton("runAnalysis", "Run Analysis", style = "background-color: #007BFF; color: white;")
+      )
     ),
     
     # Main panel for displaying outputs ----
@@ -93,6 +101,10 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session) {
+  
+  # Disable the "Run Analysis" button initially
+  # 'shinyjs::enable("runAnalysis")' to be activated with a certain condition in future
+  shinyjs::disable("runAnalysis")
   
   # Toggle visibility of advanced settings on button click
   observeEvent(input$toggleAdvanced, {
@@ -134,7 +146,7 @@ server <- function(input, output, session) {
   })
   
   # Add circles when the "Run Analysis" button is pressed
-  observeEvent(input$runAnalysis, {
+  observeEvent(input$loadMap, {
     df_temp <- df()
     radius <- input$buffer * 1000
     
