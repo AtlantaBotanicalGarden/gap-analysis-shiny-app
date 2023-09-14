@@ -5,8 +5,8 @@ library(leaflet)
 library(shinyjs)
 library(rgbif)
 
-map <- leaflet() %>%
-  addTiles()
+#map <- leaflet() %>%
+#  addTiles()
 
 # Define UI for data upload app ----
 ui <- fluidPage(
@@ -158,6 +158,31 @@ server <- function(input, output, session) {
       showNotification("No occurrence data found for the specified species on GBIF.", type = "warning")
       return(NULL)
     }
+    ## GBIF DATA HANDLING | Step 1 of 2 ##
+    # Convert gbif list of lists into dataframe
+    gbif_df <- do.call(rbind.data.frame, gbif_data[3])
+    
+    # Extracting only gbif_data with lat/longs
+    sub_gbif <- subset(gbif_df, !is.na(gbif_df[,85]) & !is.na(gbif_df[,86]))
+    ###
+    
+    # Converting gbif_df to gbif_gap_df
+    gbif_gap_df <- sub_gbif[c("decimalLatitude", "decimalLongitude")]
+    
+    # Add "collection_bool" and "id" to gbif_gap_df
+    gbif_gap_df <- cbind(gbif_gap_df, collection_bool=FALSE, id=NA)
+    
+    # Change decimalLatitude and decimalLongitude
+    names(gbif_gap_df)[names(gbif_gap_df) == 'decimalLatitude'] <- 'y'
+    names(gbif_gap_df)[names(gbif_gap_df) == 'decimalLongitude'] <- 'x'
+    ## ##
+    
+    # Check if all coordinate data
+    if(nrow(gbif_gap_df) == 0) {
+      
+      showNotification("Occurrence data found for the specified species on GBIF lacking coordinate data.", type = "warning")
+    }
+    
     
     # Convert gbif_data to a dataframe and append to uploaded CSV
     uploaded_data <- df() 
@@ -178,7 +203,10 @@ server <- function(input, output, session) {
   
   # Initialize the map when the app starts
   output$map <- renderLeaflet({
-    map
+    leaflet() %>%
+      addTiles() %>%
+      setView(lng = 0, lat = 0, zoom = 2) %>%
+      setMaxBounds(lng1 = -180, lat1 = -90, lng2 = 180, lat2 = 90)
   })
   
   # Add circles when the "Load Map" button is pressed
