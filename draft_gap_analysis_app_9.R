@@ -3,6 +3,7 @@ library(tidyverse)
 library(rsconnect)
 library(leaflet)
 library(shinyjs)
+library(rgbif)
 
 map <- leaflet() %>%
   addTiles()
@@ -72,21 +73,22 @@ ui <- fluidPage(
                        selected = "head")
       ),
       
-      # Add "Run Analysis" button with padding
+      # Species search input and button
+      textInput("speciesName", "Enter Species Name"),
+      actionButton("searchGBIF", "Search GBIF"),
+      
+      # Add "Load Map" and "Run Analysis" buttons with padding
       div(style = "padding-top: 20px; padding-bottom: 10px;", 
-          actionButton("loadMap", "Load Map")
+          actionButton("loadMap", "Load Map"),
+          actionButton("runAnalysis", "Run Analysis", style = "background-color: #339CFF; color: white;")
       ),
       
       # Add slider input for buffer size with padding
       div(style = "padding-top: 10px; padding-bottom: 10px;", 
           sliderInput("buffer", "Buffer Radius:", 
                       min = 1, max = 50, value = 10)
-      ),
-      
-      # Add "Run Analysis" button with padding
-      div(style = "padding-top: 10px; padding-bottom: 10px;", 
-          actionButton("runAnalysis", "Run Analysis", style = "background-color: #339CFF; color: white;")
       )
+      
     ),
     
     # Main panel for displaying outputs ----
@@ -102,37 +104,70 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   
-  # Disable the "Run Analysis" button initially
-  # 'shinyjs::enable("runAnalysis")' to be activated with a certain condition in future
-  shinyjs::disable("runAnalysis")
-  
   # Toggle visibility of advanced settings on button click
   observeEvent(input$toggleAdvanced, {
     toggle("advancedSettings")
   })
   
-  df = reactive({
+  df = reactiveVal()
+  
+  observe({
     req(input$file1)
-    df <- read.csv(input$file1$datapath,
-                   header = input$header,
-                   sep = input$sep,
-                   quote = input$quote)
-    return(df)
+    df_data <- read.csv(input$file1$datapath,
+                        header = input$header,
+                        sep = input$sep,
+                        quote = input$quote)
+    df(df_data)
   })
   
   output$dataWarning <- renderText({
     df_data <- df()
-    missing_cols <- setdiff(c("x", "y", "collected", "identifier"), colnames(df_data))
+    if(is.null(df_data)) return(NULL)
     
+    missing_cols <- setdiff(c("x", "y", "collection_bool", "id"), colnames(df_data))
     if(length(missing_cols) > 0) {
+      # Disable the other buttons
+      shinyjs::disable("speciesName")
+      shinyjs::disable("searchGBIF")
+      shinyjs::disable("loadMap")
+      shinyjs::disable("runAnalysis")
+      shinyjs::disable("buffer")
       paste("WARNING | The uploaded CSV does not contain the following required columns:", paste(missing_cols, collapse = ", "))
     } else {
+      # Enable the buttons
+      shinyjs::enable("speciesName")
+      shinyjs::enable("searchGBIF")
+      shinyjs::enable("loadMap")
+      shinyjs::enable("runAnalysis")
+      shinyjs::enable("buffer")
       ""
     }
   })
   
+  # GBIF Search and Append Data
+  observeEvent(input$searchGBIF, {
+    species <- input$speciesName
+    
+    # Fetch GBIF data
+    gbif_data <- occ_search(scientificName = species, limit = 100) # limiting to 100 records for demonstration
+    
+    # Check if any data is found
+    if(nrow(gbif_data$data) == 0) {
+      # Show a warning message if no data is found
+      showNotification("No occurrence data found for the specified species on GBIF.", type = "warning")
+      return(NULL)
+    }
+    
+    # Convert gbif_data to a dataframe and append to uploaded CSV
+    uploaded_data <- df() 
+    appended_data <- rbind(uploaded_data, as.data.frame(gbif_data$data))
+    df(appended_data)  # Update the reactive value with appended data
+  })
+  
   output$contents <- renderTable({
     df_data <- df()
+    if(is.null(df_data)) return(NULL)
+    
     if(input$disp == "head") {
       return(head(df_data))
     } else {
@@ -145,22 +180,12 @@ server <- function(input, output, session) {
     map
   })
   
-  # Add circles when the "Run Analysis" button is pressed
+  # Add circles when the "Load Map" button is pressed
   observeEvent(input$loadMap, {
     df_temp <- df()
-    radius <- input$buffer * 1000
+    if(is.null(df_temp)) return(NULL)
     
-    if(all(c("x", "y") %in% colnames(df_temp))) {
-      leafletProxy("map", session, data = df_temp) %>%
-        clearShapes() %>%
-        addCircles(lng = ~x, lat = ~y, popup = ~paste(x, y), radius = radius)  # Convert km to meters
-    }
-  })
-  
-  # Update circles when the buffer size changes
-  observeEvent(input$buffer, {
     radius <- input$buffer * 1000
-    df_temp <- df()
     
     if(all(c("x", "y") %in% colnames(df_temp))) {
       leafletProxy("map", session, data = df_temp) %>%
