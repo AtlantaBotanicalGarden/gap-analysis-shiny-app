@@ -1,0 +1,13 @@
+name: gap-analysis-shiny-app
+title: gap-analysis-shiny-app
+username: atlanta
+account: atlanta
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 9855167
+bundleId: 7680757
+url: https://atlanta.shinyapps.io/gap-analysis-shiny-app/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .gitattributes|draft_gap_analysis_app_1.R|example_app.R|example_csv_load_app.R|example_csv_upload_app.R|Nov 2021.csv|Oct 2021.csv|README.md|test_input_file.csv
