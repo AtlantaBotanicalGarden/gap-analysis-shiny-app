@@ -1,0 +1,434 @@
+/* Gap analysis style sheet, adapted from Kenya afforestation(geospatial centroid)*/
+
+//////// accepted Colors ////////////
+// blue #00a6fb
+// dark green #1b4332
+// off black #081c15
+// plum #655560
+// forest green #006666
+// fresh green #1b998b
+// bright green #52b788
+// mid blue/green #cce3de
+// light blue/green #eaf4f4
+// lime green #8ec63f
+// yellow #ffe84b
+// orange #ff7c27
+// mustard yellow #f6bd60
+// light peach #f7ede2
+// red #da2a1c
+// fuchsia #a80874
+// purple #5d30b2
+
+////////////////////// app-wide styles //////////////////////////////////
+
+/* align tabsets to the right */
+ul.nav.navbar-nav {
+  justify-content: right;
+}
+
+
+
+/* Add padding to About page */
+div.about-tab {
+  padding: 3em;
+}
+
+
+/* Customize variable tabsets for model validation */
+ul#model-eval {
+    justify-content: center;
+    padding: 1em;
+}
+
+
+
+/* Leaflet styling */
+
+.leaflet-container {
+    font: 14px/1.5 var(--bs-font-sans-serif) !important;
+}
+
+.leaflet-control-layers {
+  margin-bottom: 20% !important;
+}
+
+input[type="checkbox" i] {
+   background-color: red !important;
+}
+
+
+
+/* Data table search bar */
+.dataTables_filter {
+  float: left !important;
+}
+
+    
+
+/*set up container for footer */
+.container-all {
+  padding: 0px;
+  position: relative;
+  min-height: 100vh;
+  padding-bottom: 25rem;
+}
+
+/* edit footer for mobile */
+@media only screen and (max-width: 768px) {
+  .container-all {
+    padding-bottom: 600px !important;
+  }
+  
+  .site-footer {
+    height: 600px !important;
+  }
+
+}
+
+
+/////////////////////// Homepage styling //////////////////////////////////
+
+/////////////////// header (decided to remove) ////////////////////////////
+/* .header-title {
+  color: beige;
+  padding-bottom: 20px;
+  letter-spacing: 1px;
+  font-weight: 400;
+  font-size: 40px;
+  text-align: center;
+  padding: 40px;
+  text-shadow: 2px 2px 5px #000000c4;
+  
+} */
+
+
+/*.header {
+  background-image: url(https://globalforestcoalition.org/wp-content/uploads/2015/07/nature-forest-trees-bamboo.jpeg);
+  background-size: cover;
+  margin-right: -1em;
+  margin-left: -1em;
+  margin-top: -2em;
+} */
+
+/*img.stock-img {
+  z-index:0;
+  width: -webkit-fill-available;
+  margin: -20px;
+}*/
+
+
+/* Beta text in header */
+em.beta-text {
+  color: lightgrey;
+}
+
+
+//////////////////////////// Sub-header info ///////////////////////////////////
+
+
+/* set up 2 column layout */
+.sub-header{
+  display: grid;
+  grid-column-gap: 5%;
+  grid-template-columns: repeat(2, 1fr);
+  flex-wrap: wrap;
+  -webkit-flex-wrap: wrap;
+  align-items: center;
+  padding-left: 10%;
+  padding-right: 10%;
+  padding-top: 3%;
+}
+
+/* adapt to mobile */
+@media only screen and (max-width: 900px) {
+  .sub-header {
+    display: grid;
+    grid-template-columns: 1fr !important;
+    text-align: center;
+  }
+  
+  .header-photo {
+    text-align: center !important;
+  }
+
+}
+
+.header-text h3 {
+  letter-spacing: 1.5px;
+  color: darkslategrey;
+}
+
+.header-text p {
+  letter-spacing: 1.5px;
+  color: darkslategrey;
+
+}
+
+.header-photo {
+  text-align: right;
+}
+
+img.map-image {
+  width: 80%;
+  box-shadow: 10px 10px 5px #ccc;
+}
+
+////////////////////////// climate scenarios //////////////////////////////////
+
+/* edit title */
+.scenario-title {
+  text-align: center;
+  /*border-radius: 4px;
+  background-color: beige;*/
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 4px 7px 4px 8px;
+  margin: 30px;
+  color: darkslategrey;
+}
+
+
+/* set up buckets for scenarios on homepage */
+div.row-scenarios{
+  display: grid;
+  grid-column-gap: 3%;
+  grid-template-columns: repeat(4, 1fr);
+  flex-wrap: wrap;
+  -webkit-flex-wrap: wrap;
+  /*margin-right: -15px;
+  margin-left: -15px;*/
+  justify-items: center;
+}
+
+/* make buckets adapt to colum on mobile */
+@media only screen and (max-width: 900px) {
+  div.row-scenarios {
+    display: grid;
+    grid-template-columns: 1fr !important;
+    padding-left: 15%;
+    padding-right: 15%;
+    grid-row-gap: 10px;
+  }
+  
+  .flip-card {
+    height: 40vh !important;
+  }
+  
+}
+
+/* column size/properies for bucket content */
+div.flip-card{
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0px 2px 4px 0px #02020280;
+  text-align: center;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  width: 100%;
+}
+
+
+/*try adding hover characteristics to buckets */
+
+.flip-card-inner{
+  text-align: center;
+  transition: transform 0.8s;
+  transform-style: preserve-3d;
+  width: 100%;
+  -moz-backface-visibility: hidden;
+}
+
+/* Do an horizontal flip when you move the mouse over the flip box container */
+.flip-card:hover .flip-card-inner {
+  transform: rotateY(180deg);
+  transition: transform 0.5s;
+}
+
+
+/* Position the front and back side */
+.flip-card-front, .flip-card-back {
+  width: 100%;
+  height: 100%;
+  -webkit-backface-visibility: hidden; /* Safari */
+  backface-visibility: hidden;
+  text-shadow: 0.5px 0.5px 3px #9a9b9c;
+
+}
+
+/* set z-index for front to fix Firefox issues */
+.flip-card-front {
+  z-index: 2;
+}
+
+/* Style the back side */
+.flip-card-back {
+  transform: rotateY(180deg);
+  position: absolute;
+  top: -5%;
+  z-index: 3;
+}
+
+/* edit text within buckets */
+.flip-card h2 {
+  color:beige !important;
+  letter-spacing: 1.3px;
+}
+
+.flip-card h3 {
+  color:beige;
+  letter-spacing: 1.3px;
+}
+
+.flip-card p {
+  color: beige;
+  font-weight: 400;
+  letter-spacing: 0.3px;
+  margin-top: 1rem;
+}
+
+/* bucket button properties */
+#optimistic-page_change, #middle-page_change, #pessimistic-page_change, #extreme-page_change {
+    color: black;
+    background-color: beige;
+    border-style: none;
+    font-weight: 500;
+    margin: 10px;
+    box-shadow: 8px 8px 8px 5px #0000006b;
+}
+
+#optimistic-page_change:hover, #middle-page_change:hover, #pessimistic-page_change:hover, #extreme-page_change:hover {
+  background-color:#9e9e8b;
+  transition: 0.7s;
+}
+
+/* set smiley image properties */
+img.smiley {
+  width: 5em ;
+  height: auto;
+  margin: 10px;
+}
+
+/* disclaimer text */
+.disclaimer {
+  text-align: center;
+  letter-spacing: 1.5px;
+  color: darkslategrey;
+  padding-top: 5%;
+}
+
+
+//////////////////////////// info section /////////////////////////////////////
+
+
+/* set up section structure */
+.info-row {
+  display: grid;
+ /* grid-column-gap: 8%; */
+  grid-template-columns: repeat(2, 1fr);
+  flex-wrap: wrap;
+  -webkit-flex-wrap: wrap;
+  justify-items: center;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0px 2px 4px 0px #02020280;
+  margin: 5%;
+}
+
+/* make section vertical on mobile */
+@media only screen and (max-width: 768px) {
+  .info-row{
+    display: grid;
+    grid-template-columns: 1fr !important;
+    padding: 1em;
+    grid-row-gap: 10px;
+  }
+}
+
+/* column size/properties for each sub section */
+.info-column1, .info-column2{
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  width: 100%;
+}
+
+.info-column2{
+  text-align: left !important;
+}
+
+/* make image fit to section */
+.info-img {
+  width: 150px;
+  /*border-radius: 100%;
+  box-shadow: 0px 2px 4px 0px #02020280;*/
+}
+
+
+/* set color of hyperlinks */
+.info-column2 a {
+    color: #34c0eb !important;
+}
+
+
+///////////////////////// footer styling /////////////////////////////////
+
+/* footer styling */
+.site-footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background-color:#2F4F4F;
+  padding:10px;
+  font-size:15px;
+  line-height:24px;
+  color:#737373;
+}
+
+div#footer p {
+  color: white;
+}
+
+div#footer h6 {
+  color: white;
+  font-size:16px;
+  text-transform:uppercase;
+  margin-top:5px;
+  letter-spacing:2px
+}
+
+.footer-links a {
+  color: white;
+}
+
+
+.footer-links {
+  padding-left: 0;
+  list-style: none
+}
+
+.footer-links li {
+  display: block;
+}
+
+.footer-links.inline li {
+  display: inline-block;
+}
+
+img.footer-logo {
+  width: 280px;
+  margin: 5px;
+}
+
+img.footer-logo#centroid-logo {
+  width: 180px;
+}
+
+.copyright-text {
+  color: #737373 !important;
+}
