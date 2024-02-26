@@ -28,28 +28,17 @@ The GAMMA tool will reach this aim by
 
 ## Organization of the Repository
 
--**gap-analysis-shiny-app** (*name will change )
-  ├── 0_preprocessingData.R
-  |   *script for preparing any raw input required by the application*     
-  ├── appData
-  |   *folder containing datasets required by the application*
-  ├── appFunctions
-  |   *folder containing functions used within the application*
-  ├── app.R
-  |   *script for defining the application*
-  ├── dataToPreProcess
-  |   *folder containing raw data sets called by the 0_preprocessingData.R file*
-  ├── preprocessingFunctions
-  |   *folder containing functions used by the 0_preprocessingData.R file *
-  ├── README.md
-  |   *script for preparing any raw input required by the application*
-  ├── shinyModules
-  |   *folder containing modules used within the shiny application*
-  ├── utilities
-  |   *folder containing helper functions that may be used in both the preprocessing and shiny application*
-  |── www 
-  |   *folder containing css and image files*
-
+**gap-analysis-shiny-app** (*name will change )   
+├── 0_preprocessingData.R :  *script for preparing any raw input required by the application*    
+├── appData : *folder containing datasets required by the application*     
+├── appFunctions : *folder containing functions used within the application*     
+├── app.R : *script for defining the application*     
+├── dataToPreProcess : *folder containing raw data sets called by the 0_preprocessingData.R file*     
+├── preprocessingFunctions : *folder containing functions used by the 0_preprocessingData.R file *     
+├── README.md : *script for preparing any raw input required by the application*     
+├── shinyModules :  *folder containing modules used within the shiny application*     
+├── utilities :  *folder containing helper functions that may be used in both the preprocessing and shiny application* 
+|── www : *folder containing css and image files*     
 
 
 ## Viewing or Running the GAMMA tool  
