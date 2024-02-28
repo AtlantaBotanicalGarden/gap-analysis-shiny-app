@@ -1,0 +1,88 @@
+<mxfile host="Electron" modified="2024-02-28T22:34:53.425Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.11 Chrome/114.0.5735.289 Electron/25.9.8 Safari/537.36" etag="Zoc3Of_hH_Cj8ZX6duXs" version="22.1.11" type="device">
+  <diagram name="Page-1" id="oW57EPafTACSsjL6iyDZ">
+    <mxGraphModel dx="834" dy="1684" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-1" value="Gap Analysis and Metacollection Management Applicaiton" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="360" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-2" value="Using the bslib dashboard framework&amp;nbsp;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-3" value="landing page&lt;br&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="220" y="160" width="80" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-5" value="Data upload/search/map" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="370" y="160" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-7" value="Gap Analysis Page" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="630" y="160" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-8" value="individual modules" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="210" y="120" width="630" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-9" value="" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="40" y="360" width="690" height="690" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-10" value="Title and&amp;nbsp; navigation page selection -- standard across" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#BFBFBF;" vertex="1" parent="1">
+          <mxGeometry x="40" y="360" width="690" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-11" value="Logos&amp;nbsp;&lt;br&gt;&lt;br&gt;Supportive Text&amp;nbsp;&lt;br&gt;&lt;br&gt;Images&amp;nbsp;&lt;br&gt;&lt;br&gt;Etc&lt;br&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="325" y="480" width="120" height="370" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-12" value="Standard footer&amp;nbsp;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#BFBFBF;" vertex="1" parent="1">
+          <mxGeometry x="40" y="990" width="690" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-13" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="880" y="360" width="690" height="690" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-14" value="Title and&amp;nbsp; navigation page selection -- standard across" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#BFBFBF;" vertex="1" parent="1">
+          <mxGeometry x="880" y="360" width="690" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-15" value="Standard footer&amp;nbsp;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#BFBFBF;" vertex="1" parent="1">
+          <mxGeometry x="880" y="990" width="690" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-16" value="landing page&lt;br&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="52" y="300" width="80" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-17" value="Data upload/search/map" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="880" y="300" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-18" value="Side bar panel&amp;nbsp;&lt;br&gt;&lt;br&gt;&lt;br&gt;Elements share across table and map elements&amp;nbsp;&lt;br&gt;- species&amp;nbsp;&lt;br&gt;- etc...&amp;nbsp;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="880" y="420" width="170" height="570" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-19" value="Data upload and table view&amp;nbsp;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="830" width="470" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-20" value="Map interface&amp;nbsp;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="470" width="490" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-21" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1630" y="360" width="690" height="690" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-22" value="Title and&amp;nbsp; navigation page selection -- standard across" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#BFBFBF;" vertex="1" parent="1">
+          <mxGeometry x="1630" y="360" width="690" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-23" value="Standard footer&amp;nbsp;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#BFBFBF;" vertex="1" parent="1">
+          <mxGeometry x="1630" y="990" width="690" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-24" value="Data upload/search/map" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1630" y="300" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-25" value="Side bar panel&amp;nbsp;&lt;br&gt;&lt;br&gt;&lt;br&gt;Gap analysis parameters&lt;br&gt;- buffer distance&amp;nbsp;&lt;br&gt;- etc&amp;nbsp;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1631" y="420" width="170" height="570" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-26" value="tabular outputs" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1820" y="850" width="470" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-27" value="Map interface&amp;nbsp;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1820" y="480" width="470" height="310" as="geometry" />
+        </mxCell>
+        <mxCell id="mx73ctgZr5Xd_oZbMEVb-28" value="Map Sidebar&amp;nbsp;&lt;br&gt;&lt;br&gt;- Flag observational data&amp;nbsp;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="710" width="490" height="70" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
