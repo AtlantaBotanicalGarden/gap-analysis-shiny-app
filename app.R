@@ -3,14 +3,13 @@
 # carverd@colostate.edu
 # 20240225
 ### 
-
 library(shiny)
 library(bslib)
 library(ggplot2)
 library(shinipsum)
 library(leaflet)
 library(DT)
-
+library(palmerpenguins)
 # source modules --------------------------------------------------------
 lapply(list.files(
   path = "modules/",
@@ -27,7 +26,8 @@ lapply(list.files(
 
 # global variables -----------------------------------------
 
-data(penguins, package = "palmerpenguins")
+# spatial Data 
+spData <- sf::st_read("appData/spatialData.gpkg")
 
 ## this content will likely be replaced by module elements
 cards <- list(
@@ -60,47 +60,61 @@ cards <- list(
   )
 )
 
-color_by <- varSelectInput(
-  "color_by", "Color by",
-  penguins[c("species", "island", "sex")],
-  selected = "species"
-)
-
 map1 <- leaflet::leaflet()|>
   addTiles()
 
 map2 <- map1
 
 
+
+
+# define the theme elements  ----------------------------------------------
+theme <- bslib::bs_theme(
+  version = 5,
+  bootswatch = "yeti",
+  base_font = font_google("Nunito Sans"),
+  heading_font =  font_google("Merriweather")
+  )
+
+
+
 # UI ----------------------------------------------------------------------
 
 
 ui <- page_navbar(
-  # set theme elements 
-  theme = bs_theme(
-    bootswatch = "yeti",
-    base_font = font_google("Inter"),
-    version = "5",
-    primary = "#1b998b",
-    secondary = "#f6bd60"
-    
-  ),
   title = "Gap Analysis and Metacollection Management",
+  # set theme elements 
+  ## settting the colors here is not working well at all... might just need to rely on the scss file but wait on that development wokr. 
+  theme = bslib::bs_theme(
+    version = 5,
+    bootswatch = "yeti",
+    base_font = font_google("Nunito Sans"),
+    heading_font =  font_google("Merriweather")
+  ),
+  # header = 
+  bg ="#52b788",
+  window_title = "GAMMA Tool",
+  
   br(),
   underline = TRUE,
   nav_spacer(),
-  nav_panel("Landing Page",
-            h3("project summary"),
+  nav_panel("About",
+            h3("Project Summary"),
             p(shinipsum::random_text(nwords = 100)),
             br(),
-            plotOutput("image", height = "300px"),
+            tags$blockquote("The GAMMA tool will allow users to quantify and assess the completeness of recent collections made, as well as enable meta collection communities to assess the current ex situ conservation status and collection gaps across all participating collections.", cite = "Hadley Wickham"),
+            br(),
+            p(shinipsum::random_text(nwords = 50)),
+            br(),
+            plotOutput("image",height = "20px"),
             br(),
             p(random_text(nwords = 300))
             ),
-  nav_panel("Map Example 1", 
+  nav_panel("1. Gather and Clean Data ", 
             cards[[1]],),
-  nav_panel("Map Example 2", 
+  nav_panel("2. Run a Gap Analysis", 
             cards[[2]]),
+  nav_spacer(),
   nav_menu(
     title = "External Links",
     align = "right",
@@ -112,12 +126,6 @@ ui <- page_navbar(
 
 # server ----------------------------------------------------------------
 server <- function(input, output) {
-  gg_plot <- reactive({
-    ggplot(penguins) +
-      geom_density(aes(fill = !!input$color_by), alpha = 0.2) +
-      theme_bw(base_size = 16) +
-      theme(axis.title = element_blank())
-  })
   
   output$map1 <- leaflet::renderLeaflet(map1)
   output$mapTable <- renderDT(shinipsum::random_DT(nrow = 5,ncol = 4))
