@@ -1,0 +1,7 @@
+/* remove border from outer container */
+.container-all {
+  padding: 0px;
+  position: relative;
+  min-height: 100vh;
+  padding-bottom: 25rem;
+}
