@@ -9,7 +9,8 @@ library(ggplot2)
 library(shinipsum)
 library(leaflet)
 library(DT)
-library(palmerpenguins)
+library(readr)
+library(dplyr)
 # source modules --------------------------------------------------------
 lapply(list.files(
   path = "modules/",
@@ -74,15 +75,15 @@ allData <- bind_rows(mafa,qubr) |> as.data.frame()
 
 # define accodian selection options 
 genus_by <- shiny::selectInput(
-  inputId = "genus",
+  inputId = "genusSelect",
   label = "Genus: ",
   choices = unique(allData$genus)
   )
-species_by <- varSelectInput(
-  inputId = "Species",
-  label = "Species",
-  data =  c("fraseri", "brandegeei"),
-  selected = "fraseri"
+## need this to be a reactive element 
+species_by <- shiny::selectInput(
+  inputId = "speciesSelect",
+  label = "Species: ",
+  choices = unique(allData$species)
 )
 
 
@@ -130,7 +131,8 @@ ui <- fluidPage(
                  style="text-align:left"))
     ),
     h2("Project Background"),
-    p("This project was led by Alanta Botanical Garden in collaboration with the IMLS GCC Growing
+    p(style="text-align: center;",
+      "This project was led by Alanta Botanical Garden in collaboration with the IMLS GCC Growing
       Metacollections team which includes individuals from ",
       tags$a(href = "https://mortonarb.org/", "The Morton Arboretum", target = "_blank"),
       ", ",
@@ -143,11 +145,14 @@ ui <- fluidPage(
       tags$a(href = "https://www.auburn.edu/", "Auburn University", target = "_blank"),
       ", ",
       tags$a(href = "https://www.lotusland.org/", "Lotus Land", target = "_blank"),
-      ". The project was primarily funded by the ",
-      tags$a(href = "https://www.imls.gov/", "Institute of Museum and Library Services", target = "_blank"),
-      " (IMLS) "
+      ".",
+      tags$br(),
+       tags$strong("This work is made possible by the Institute of Museum and Library Services ",
+      tags$a(href = "https://www.imls.gov/", "(MG-252894-OMS-23).", target = "_blank"),
+      "." ),
     ),
     fluidRow(
+      p("Multiple logos?"),
       column(3,
              div(img(src="temp.png", alt="Logo 2", align="center", width="60%"), style="text-align:center")),
       column(3,
@@ -158,6 +163,14 @@ ui <- fluidPage(
              div(img(src="temp.png", alt="Logo 4", align="center", width="40%"), style="text-align:center"))
     ),
     br(),
+    fluidRow(
+      p("Or a single logo?"),
+      column(2),
+      column(8,
+             div(img(src="Metacollections project logo_color.png", alt="Logo 2", align="center", width="60%"), style="text-align:center")),
+      column(2),
+    ),
+    
     card(full_screen = TRUE,
          h3("Learn More"),
          p(random_text(nwords = 300)),
@@ -197,8 +210,9 @@ ui <- fluidPage(
           position = "left",
           accordion(
             accordion_panel(
-              "S",
-              genus_by
+              "Select Taxon",
+              genus_by, 
+              species_by
             ),
             accordion_panel(
               "Other controls",
