@@ -31,60 +31,34 @@ qubr <- read_csv("appData/Quercus_brandegeei.csv")
 allData <- bind_rows(mafa,qubr) |> as.data.frame()
 # temp data
 
+tempTable <- allData |>
+  dplyr::filter(taxon=="Magnolia fraseri")
+
+# 
+map1 <- leaflet::leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16))|>
+  addTiles()
+# 
+map2 <- map1
 
 
 
-## this content will likely be replaced by module elements
-# cards <- list(
-#   card(
-#     full_screen = TRUE,
-#     card_header("Map Element"),
-#     layout_sidebar(
-#       sidebar = sidebar("Sidebar"),
-#       "Main contents",
-#       leaflet::leafletOutput("map1"),
-#       "Data Tables",
-#       DTOutput("mapTable")
-#     )
-#   ),
-#   card(
-#     full_screen = TRUE,
-#     card_header("Gap Analysis"),
-#     layout_columns(
-#       col_widths = c(12,8,4),
-#       row_heights = c(2,2),
-#       card(leaflet::leafletOutput("map2")),
-#       card(DTOutput("mapTable2")),
-#       card(p("Some options for changing parameters for the analysis"))
-#     )
-#   ),
-#   card(
-#     full_screen = TRUE,
-#     card_header("Body Mass"),
-#     plotOutput("body_mass")
+
+# # I don't know if I really like this option or not?  ----------------------
+# ## Can initalize but need some reactive elements for filtering based on the gensus selected. Magnolia fraseri
+# # define accodian selection options 
+# genus_by <- shiny::selectInput(
+#   inputId = "genusSelect",
+#   label = "Genus: ",
+#   choices = unique(allData$genus),
+#   selected = "Magnolia"
 #   )
+# ## need this to be a reactive element 
+# species_by <- shiny::selectInput(
+#   inputId = "speciesSelect",
+#   label = "Species: ",
+#   choices = unique(allData$species),
+#   selected = "fraseri"
 # )
-# 
-# map1 <- leaflet::leaflet()|>
-#   addTiles()
-# 
-# map2 <- map1
-
-
-
-
-# define accodian selection options 
-genus_by <- shiny::selectInput(
-  inputId = "genusSelect",
-  label = "Genus: ",
-  choices = unique(allData$genus)
-  )
-## need this to be a reactive element 
-species_by <- shiny::selectInput(
-  inputId = "speciesSelect",
-  label = "Species: ",
-  choices = unique(allData$species)
-)
 
 
 # UI ----------------------------------------------------------------------
@@ -197,38 +171,109 @@ ui <- fluidPage(
   nav_panel(
     title = "Data Evaluation",
     # because of the fixed header this need to be pushed down
-    h2("Description of Page"),
-    p(shinipsum::random_text(nwords = 50)),
-    # define row for containing the map feaut
-    page_fluid(
-      # defeine the sidebar element 
+    h2("Data Evaluation"),
+    p("On this page individuals will be able to "),
+    br(),
+    tags$ul(
+      tags$li("Select the Gensus and species being evaluated"),
+      tags$li("Grab data on the species from GBIF"),
+      tags$li("Upload data from a local environment into the tool"),
+      tags$li("Evaluate the data from GBIF and the local environment on the map"),
+      tags$li("future : remove points from the analys based on the data onmap")
+    ),
+   
+      # define row for containing the map feaut
+      # defeine the sidebar element
       layout_sidebar(
-        border = TRUE,
-        border_color = "#f6bd60",
-        padding = "10px",
+      # sidebar feature
         sidebar = sidebar(
           position = "left",
           accordion(
             accordion_panel(
-              "Select Taxon",
-              genus_by, 
-              species_by
+              "1. Select Taxon",
+              shiny::selectInput(
+                inputId = "genusSelect",
+                label = "Genus: ",
+                choices = unique(allData$genus),
+                selected = "Magnolia"),
+              uiOutput("speciesSelect")
             ),
             accordion_panel(
-              "Other controls",
-              "Other controls go here"
-            )
+              "2. Grab Data From GBIF",
+              actionButton("gbifPull", "Pull Data from GBIF")
+            ),
+            accordion_panel(
+              "3. Upload Your own data",
+              fileInput("upload", "Upload a file")
+            ),
+            accordion_panel(
+              "4. Add data to the map",
+              actionButton("pointsToMap", "add locations to map")
+            ),
+            
+            
           )
+        ),
+        # main panel features
+        card(
+          card_header("Map Element 1"),
+          leaflet::leafletOutput("map1"),
+          card_footer("Description of the map? ")
         )
-      )
+      ),
+    card(
+      card_header("Information on the Records"),
+      DTOutput("mapTable")
     )
-  ),
+  ), ## end data analysis page
 
   # Gap Analysis ------------------------------------------------------------
   nav_panel(
     title = "Gap Analysis",
-    
-  ),
+    h2("Gap Analysis"),
+    p("On this page individuals will be able to "),
+    br(),
+    tags$ul(
+      tags$li("Utilize the dataset generated on the first Data Analysis page"),
+      tags$li("Select a specific buffer size"),
+      tags$li("Evaluate data on the map"),
+      tags$li("Generate a statistical summary of the gap analysis"),
+      tags$li("Export the results of the gap analysis")
+    ),
+    layout_sidebar(
+      # sidebar feature
+      sidebar = sidebar(
+        position = "right",
+        accordion(
+          accordion_panel(
+            "Select Buffer Size",
+            selectInput("bufferSize", "Select Buffer Distances in KM", choices = c("1", "5", "10","20","50"), selected = "50")
+          ),
+          accordion_panel(
+            "Run Gap Analysis",
+            actionButton("runGapAnalysis", "Generate Results")
+          ),
+          accordion_panel(
+            "Export Map",
+            actionButton("exportGapMap", "Download the current map")
+          )
+        )
+      ),
+      # main panel features
+      card(
+        card_header("Map Element 1"),
+        leaflet::leafletOutput("map2"),
+        card_footer("Description of the map? ")
+      )
+    ),
+    card(
+      card_header("Results of the Gap Analysis"),
+      DTOutput("mapTable2"),
+      card_footer(
+        actionButton("exportGapTabke", "Download the current table")
+      )
+    )
+  ),## end gap analysis page
   nav_spacer(),
 
   # Links -------------------------------------------------------------------
@@ -237,10 +282,9 @@ ui <- fluidPage(
       align = "right",
       nav_item(tags$a("Source Code", href = "https://github.com/Jonathan-Gore/gap-analysis-shiny-app"), target="_blank"),
       nav_item(tags$a("Alanta Botanical Garden", href = "https://atlantabg.org/"), target="_blank")
-    )
-  )
-  
-)
+      ) # edd nav bar links
+  )## end navbar page
+)## end ui
   
 # 
 # ui <- page_navbar(
@@ -282,9 +326,94 @@ ui <- fluidPage(
 # 
 # # server ----------------------------------------------------------------
 server <- function(input, output) {
+  output$speciesSelect = renderUI({
+    # grab the selection
+    genusPick = input$genusSelect
+    # filter the data 
+    genusData <- allData |>
+      dplyr::filter(genus == as.character(genusPick))
+    # define selector 
+    selectInput("speciesSelect", "Select a species", choices = genusData$species, selected = )
+  })
 
+  # generate the table object 
+  df1 <- reactive({
+    allData |>
+      dplyr::filter(genus == input$genusSelect)|>
+      dplyr::filter(species == input$speciesSelect)
+  })
+  # create a spatial object from the points 
+  sp1 <- observeEvent(input$pointsToMap, {
+    # generate spatial object 
+    pointsVals <- df1()|>
+      sf::st_as_sf(coords = c("longitude","latitude"), crs = 4326, remove = FALSE)|>
+      dplyr::mutate(
+        popup = paste0("<strong>", as.character(taxon),"</strong>", # needs to be text
+                       "<br/><strong> Type: </strong>", type,
+                       "<br/><b>Collector Name:</b> ", collector,
+                       "<br/><b>Locality Description):</b> ", locality),
+        color = case_when(
+          type == "Insitu" ~ "#4933ff",
+          type == "Exsitu" ~ "#0c9901"
+        )
+      )
+    # update the map 
+    leafletProxy("map1")|>
+      setView(lng = pointsVals$longitude[1], lat = pointsVals$latitude[1], zoom = 6)|>
+      clearGroup(group = "observations") |>
+      addCircleMarkers(
+        data = pointsVals,
+        color = ~color,
+        popup = ~popup,
+        group = "observations"
+      )
+  })
+    
+  # update the map 
+  
+    # observeEvent(input$updateMap, {
+    #   ### helpful source https://stackoverflow.com/questions/37433569/changing-leaflet-map-according-to-input-without-redrawing
+    #   # geography
+    # 
+    #   # legend labels
+    #   labels1 <- defineLegend(in1)
+    #   leafletProxy("mymap") %>%
+    #     clearGroup(group = "Indicator Score") %>%
+    #     addPolygons(
+    #       data = ed2,
+    #       color = "#F9C1AE",
+    #       weight = 0.2,
+    #       smoothFactor = 0.5,
+    #       opacity = .5,
+    #       layerId = ed2$GEOID,
+    #       fillOpacity = 0.5,
+    #       fillColor =  ~pal1(ed2$visParam),
+    #       popup = ed2$popup,
+    #       highlightOptions = highlightOptions(
+    #         color = "white",
+    #         weight = 2,
+    #         bringToFront = TRUE
+    #       ),
+    #       options = pathOptions(pane = "index"),
+    #       group = "Indicator Score"
+    #       
+    #     )%>%
+    #     removeControl(layerId = "firstLegend")%>%
+    #     addLegend(
+    #       "topright",
+    #       colors = colorRamp,
+    #       title = "Est. Values",
+    #       labels = labels1,
+    #       opacity = .5,
+    #       layerId = "firstLegend",
+    #       group = "Indicator Score"
+    #       # labFormat = labelFormat(transform = function(x) sort(x, decreasing = TRUE))
+    #     )
+    # })
+  
+  
   output$map1 <- leaflet::renderLeaflet(map1)
-  output$mapTable <- renderDT(shinipsum::random_DT(nrow = 5,ncol = 4))
+  output$mapTable <- renderDT(df1())
   output$image <- renderImage(random_image())
   output$map2<- leaflet::renderLeaflet(map2)
   output$mapTable2 <- renderDT(shinipsum::random_DT(nrow = 5,ncol = 4))
