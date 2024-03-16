@@ -11,6 +11,8 @@ library(leaflet)
 library(DT)
 library(readr)
 library(dplyr)
+library(tools)
+library(vroom)
 # source modules --------------------------------------------------------
 lapply(list.files(
   path = "modules/",
@@ -40,7 +42,7 @@ map1 <- leaflet::leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16))|>
 # 
 map2 <- map1
 
-
+expectedNames <- c("UID",	"taxon",	"genus",	"species",	"type",	"year",	"latitude",	"longitude",	"locality",	"collector")
 
 
 # # I don't know if I really like this option or not?  ----------------------
@@ -185,6 +187,7 @@ ui <- fluidPage(
       # define row for containing the map feaut
       # defeine the sidebar element
       layout_sidebar(
+        height = "1000px",
       # sidebar feature
         sidebar = sidebar(
           position = "left",
@@ -204,11 +207,15 @@ ui <- fluidPage(
             ),
             accordion_panel(
               "3. Upload Your own data",
-              fileInput("upload", "Upload a file")
+              p(tags$a(href = "https://docs.google.com/spreadsheets/d/1BeDUBCg2BJ1DYpW47bxYH8p8CJAVqgM5rafyz81RoOc/edit?usp=sharing", "View Data Format Example", target = "_blank")),
+              fileInput("upload", "Upload a file"),
+              tags$p("Testing for expected column names"),
+              textOutput("validateColNames"),
             ),
             accordion_panel(
               "4. Add data to the map",
-              actionButton("pointsToMap", "add locations to map")
+              actionButton("pointsToMap", "add example data to map"),
+              actionButton("uploadToMap", "add uploaded to map")
             ),
             
             
@@ -223,8 +230,12 @@ ui <- fluidPage(
       ),
     card(
       card_header("Information on the Records"),
-      DTOutput("mapTable")
+      tags$p("**note**: currently this auto populates once a genus species is selected. Once we transistion to uploading data or grabing data from gbif and uploading users will have to 
+             use a button to add content to this table"),
+      DTOutput("mapTable"),
+      downloadButton("download1", "Download the current table")
     )
+    
   ), ## end data analysis page
 
   # Gap Analysis ------------------------------------------------------------
@@ -242,6 +253,7 @@ ui <- fluidPage(
     ),
     layout_sidebar(
       # sidebar feature
+      height="600px", # does not seem to actively effect this 
       sidebar = sidebar(
         position = "right",
         accordion(
@@ -324,7 +336,8 @@ ui <- fluidPage(
 # )
 # 
 # 
-# # server ----------------------------------------------------------------
+
+# server ----------------------------------------------------------------
 server <- function(input, output) {
   output$speciesSelect = renderUI({
     # grab the selection
@@ -338,11 +351,14 @@ server <- function(input, output) {
 
   # generate the table object 
   df1 <- reactive({
+    # this is currently a static dataset but should be replaces with a gbif call 
     allData |>
       dplyr::filter(genus == input$genusSelect)|>
       dplyr::filter(species == input$speciesSelect)
   })
-  # create a spatial object from the points 
+  
+
+  # create spatial data for example/GBIF feature  -----------------------------------
   sp1 <- observeEvent(input$pointsToMap, {
     # generate spatial object 
     pointsVals <- df1()|>
@@ -368,48 +384,84 @@ server <- function(input, output) {
         group = "observations"
       )
   })
-    
-  # update the map 
   
-    # observeEvent(input$updateMap, {
-    #   ### helpful source https://stackoverflow.com/questions/37433569/changing-leaflet-map-according-to-input-without-redrawing
-    #   # geography
-    # 
-    #   # legend labels
-    #   labels1 <- defineLegend(in1)
-    #   leafletProxy("mymap") %>%
-    #     clearGroup(group = "Indicator Score") %>%
-    #     addPolygons(
-    #       data = ed2,
-    #       color = "#F9C1AE",
-    #       weight = 0.2,
-    #       smoothFactor = 0.5,
-    #       opacity = .5,
-    #       layerId = ed2$GEOID,
-    #       fillOpacity = 0.5,
-    #       fillColor =  ~pal1(ed2$visParam),
-    #       popup = ed2$popup,
-    #       highlightOptions = highlightOptions(
-    #         color = "white",
-    #         weight = 2,
-    #         bringToFront = TRUE
-    #       ),
-    #       options = pathOptions(pane = "index"),
-    #       group = "Indicator Score"
-    #       
-    #     )%>%
-    #     removeControl(layerId = "firstLegend")%>%
-    #     addLegend(
-    #       "topright",
-    #       colors = colorRamp,
-    #       title = "Est. Values",
-    #       labels = labels1,
-    #       opacity = .5,
-    #       layerId = "firstLegend",
-    #       group = "Indicator Score"
-    #       # labFormat = labelFormat(transform = function(x) sort(x, decreasing = TRUE))
-    #     )
-    # })
+  # create spatial data for example/GBIF feature  -----------------------------------
+  sp2 <- observeEvent(input$uploadToMap, {
+    # generate spatial object 
+    pointsVals2 <- dataUpload()|>
+      sf::st_as_sf(coords = c("longitude","latitude"), crs = 4326, remove = FALSE)|>
+      dplyr::mutate(
+        popup = paste0("<strong>", as.character(taxon),"</strong>", # needs to be text
+                       "<br/><strong> Type: </strong>", type,
+                       "<br/><b>Collector Name:</b> ", collector,
+                       "<br/><b>Locality Description):</b> ", locality),
+        color = case_when(
+          type == "H" ~ "#4933ff",
+          type == "G" ~ "#0c9901"
+        )
+      )
+    # update the map 
+    leafletProxy("map1")|>
+      setView(lng = pointsVals2$longitude[1], lat = pointsVals2$latitude[1], zoom = 6)|>
+      clearGroup(group = "Upload Dataset") |>
+      addCircleMarkers(
+        data = pointsVals2,
+        color = ~color,
+        popup = ~popup,
+        group = "observations"
+      )|>
+      addLegend("topright", 
+                colors = c("4933ff",  "#0c9901"),
+                labels = c("H","G"),
+                title = "Uploaded Data",
+                opacity = 1)
+  })
+  
+  
+
+  # Export the table from data processing page  -----------------------------------------------
+  # The requested dataset
+  output$download1 <- downloadHandler(
+    filename = function() {
+      # Use the selected dataset as the suggested file name
+      paste0(input$genusSelect,"_",input$speciesSelect, "_data.csv")
+    },
+    content = function(file) {
+      # Write the dataset to the `file` that will be downloaded
+      write.csv(df1(), file, row.names = FALSE)
+    }
+  )
+  
+
+  # read in the uploaded data -----------------------------------------------
+  dataUpload <- reactive({
+    req(input$upload)
+    
+    ext <- tools::file_ext(input$upload$name)
+    switch(ext,
+           csv = vroom::vroom(input$upload$datapath, delim = ","),
+           validate("Invalid file; Please upload a .csv file")
+    )
+ 
+  })
+  output$validateColNames <- renderText({
+    colNames <- names(dataUpload())
+    vals <- c()
+    for(i in seq_along(expectedNames)){
+      test1 <-TRUE %in% grepl(pattern = expectedNames[i], x = colNames)
+      if(test1 == FALSE){
+        vals[i] <- expectedNames[i]
+      }
+    }
+    nonMatchedNames <- vals[!is.na(vals)]
+    if(is.null(nonMatchedNames)){
+      print("All column names match")
+    }else{
+      print(paste0("The following columns are not present in the uploaded data ", nonMatchedNames))
+    }
+    
+    
+  })
   
   
   output$map1 <- leaflet::renderLeaflet(map1)
