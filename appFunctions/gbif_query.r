@@ -60,20 +60,15 @@ query_gbif_occ <- function(taxonkey, allow_synonyms_bool = TRUE, issues_not_allo
   gbif_response <- occ_data(taxonKey = taxonkey,
                             hasCoordinate = TRUE,
                             hasGeospatialIssue = FALSE)
-  print("parsed response 1")
+
   parsed_response <- gbif_response$data
-  print("pattern <-")
   pattern <- paste(issues_not_allowed, collapse = "|")
   
-  print("pattern != ''")
   if(pattern != ""){
-    print("parsed response 2")
     parsed_response <- filter(parsed_reponse, !str_detect(parsed_reponse$issues, pattern))
   }
   
   if(allow_synonyms_bool == FALSE){
-    print("parsed response 3")
-    #print(parsed_reponse$taxonomicStatus == "ACCEPTED")
     parsed_response <- parsed_response[parsed_response$taxonomicStatus == "ACCEPTED",]
   }
   
