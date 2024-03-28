@@ -13,6 +13,8 @@ library(readr)
 library(dplyr)
 library(tools)
 library(vroom)
+library(rgbif)
+library(spocc)
 # source modules --------------------------------------------------------
 lapply(list.files(
   path = "modules/",
@@ -30,8 +32,18 @@ lapply(list.files(
 # global variables -----------------------------------------
 mafa <- read_csv("appData/magnolia_fraseri.csv")
 qubr <- read_csv("appData/Quercus_brandegeei.csv")
-allData <- bind_rows(mafa,qubr) |> as.data.frame()
+allData <- bind_rows(mafa,qubr) |> 
+  as.data.frame()|>
+  # manually declare type 
+  dplyr::mutate(type = case_when(
+    type == "Exsitu" ~ "G",
+    type == "Insitu" ~ "H"
+  ))
 # temp data
+allGBIF <- read_csv("appData/Plantae_Taxon.csv") |>
+  dplyr::filter( genus %in% c("Magnolia", "Quercus"))|>
+  dplyr::select(-"...1", -"family")
+
 
 tempTable <- allData |>
   dplyr::filter(taxon=="Magnolia fraseri")
@@ -44,23 +56,6 @@ map2 <- map1
 
 expectedNames <- c("UID",	"taxon",	"genus",	"species",	"type",	"year",	"latitude",	"longitude",	"locality",	"collector")
 
-
-# # I don't know if I really like this option or not?  ----------------------
-# ## Can initalize but need some reactive elements for filtering based on the gensus selected. Magnolia fraseri
-# # define accodian selection options 
-# genus_by <- shiny::selectInput(
-#   inputId = "genusSelect",
-#   label = "Genus: ",
-#   choices = unique(allData$genus),
-#   selected = "Magnolia"
-#   )
-# ## need this to be a reactive element 
-# species_by <- shiny::selectInput(
-#   inputId = "speciesSelect",
-#   label = "Species: ",
-#   choices = unique(allData$species),
-#   selected = "fraseri"
-# )
 
 
 # UI ----------------------------------------------------------------------
@@ -193,17 +188,29 @@ ui <- fluidPage(
           position = "left",
           accordion(
             accordion_panel(
+              # user selects the geneus 
               "1. Select Taxon",
               shiny::selectInput(
                 inputId = "genusSelect",
                 label = "Genus: ",
                 choices = unique(allData$genus),
                 selected = "Magnolia"),
-              uiOutput("speciesSelect")
+              # list of subspecies is generate for selection 
+              uiOutput("speciesSelect"),
+              # when possible the option for var subsp is listed
+              uiOutput("taxonRank"),
+              # final filter of sub species it provided 
+              uiOutput("speciesIntrfraspecific"),
+              # print the current taxon name 
+              textOutput("currentSpecies")
             ),
             accordion_panel(
-              "2. Grab Data From GBIF",
-              actionButton("gbifPull", "Pull Data from GBIF")
+              "2. Add GBIF data to the map ",
+              tags$br(),
+              "Currently this is going to load a static file of the Magnolia dataset ",
+              tags$br(),
+              tags$strong("GBIF Taxon ID:"),  textOutput("gbiftaxonid"),
+              actionButton("gbifPull", "Add GBIF to map")
             ),
             accordion_panel(
               "3. Upload Your own data",
@@ -211,11 +218,13 @@ ui <- fluidPage(
               fileInput("upload", "Upload a file"),
               tags$p("Testing for expected column names"),
               textOutput("validateColNames"),
+              actionButton("uploadToMap", "add uploaded to map")
             ),
             accordion_panel(
-              "4. Add data to the map",
-              actionButton("pointsToMap", "add example data to map"),
-              actionButton("uploadToMap", "add uploaded to map")
+              "4. Remove Data from Map ",
+              "Eventually this might expand to have some more data cleaning options.",
+              actionButton("pointsToMap", "Remove all GBIF data"),
+              actionButton("pointsToMap", "Remove uploaded data")
             ),
             
             
@@ -230,6 +239,7 @@ ui <- fluidPage(
       ),
     card(
       card_header("Information on the Records"),
+      ### add a tab section here for evaluating GBIF or uploaded record 
       tags$p("**note**: currently this auto populates once a genus species is selected. Once we transistion to uploading data or grabing data from gbif and uploading users will have to 
              use a button to add content to this table"),
       DTOutput("mapTable"),
@@ -339,27 +349,87 @@ ui <- fluidPage(
 
 # server ----------------------------------------------------------------
 server <- function(input, output) {
+  # UI select Subspecies 
   output$speciesSelect = renderUI({
     # grab the selection
     genusPick = input$genusSelect
     # filter the data 
-    genusData <- allData |>
+    genusData <- allGBIF |>
       dplyr::filter(genus == as.character(genusPick))
     # define selector 
-    selectInput("speciesSelect", "Select a species", choices = genusData$species, selected = )
+    selectInput("speciesSelect", "Select a species", choices = sort(genusData$specificEpithet), selected = )
+  })
+  # UI select variaty/subspec
+  output$taxonRank = renderUI({
+    # grab the selection
+    genusPick = input$genusSelect
+    speciesPick = input$speciesSelect
+    # filter the data
+    filteredData <- allGBIF |>
+      dplyr::filter(genus == as.character(genusPick)) |>
+      dplyr::filter(specificEpithet == as.character(speciesPick))
+    # define selector
+    selectInput("taxonRank", "Select a taxon rank", choices = filteredData$taxonRank, selected = )
+  })
+  # UI select sub species feature
+  output$speciesIntrfraspecific = renderUI({
+    # grab the selection
+    genusPick = input$genusSelect
+    speciesPick = input$speciesSelect
+    intraPick = input$taxonRank
+    # filter the data
+    filteredData2 <- allGBIF |>
+      dplyr::filter(genus == as.character(genusPick)) |>
+      dplyr::filter(specificEpithet == as.character(speciesPick))|>
+      dplyr::filter(taxonRank == as.character(intraPick))
+      
+    # define selector
+    selectInput("speciesIntrfraspecific", "Select a infraspecific epithet", choices = filteredData2$infraspecificEpithet, selected = )
+  })
+  output$currentSpecies = renderText({
+    name <- paste0("Current Taxon: ", input$genusSelect, " ",tolower(input$speciesSelect), " ")
+    if(input$taxonRank != "species"){
+      name <- paste0(name, tolower(input$taxonRank), " ", tolower(input$speciesIntrfraspecific))
+    }
+    # pass the object to render
+    name
+  })
+  
+  # pull the gbif id from the selection 
+  output$gbiftaxonid <- renderText({
+    f1 <- allGBIF |>
+      dplyr::filter(genus == as.character(input$genusSelect)) |>
+      dplyr::filter(specificEpithet == as.character(input$speciesSelect))
+    
+    if(as.character(input$taxonRank) == "species"){
+      f1$taxonID[1]
+    }else{
+      f1 |> 
+        dplyr::filter(taxonRank == as.character(input$taxonRank))|>
+        dplyr::filter(taxonRank == as.character(input$speciesIntrfraspecific))|>
+        dplyr::select(taxonID)|>
+        dplyr::pull()
+      
+    }
+      
   })
 
   # generate the table object 
   df1 <- reactive({
     # this is currently a static dataset but should be replaces with a gbif call 
     allData |>
-      dplyr::filter(genus == input$genusSelect)|>
-      dplyr::filter(species == input$speciesSelect)
+      dplyr::filter(genus == "Magnolia")|>
+      dplyr::filter(species == "fraseri")
+    
+    # GBIF data to pull specific reference  
+    # allGBIF |>
+    #   dplyr::filter(genus == input$genusSelect)|>
+    #   dplyr::filter(specificEpithet == input$speciesSelect)
   })
   
 
   # create spatial data for example/GBIF feature  -----------------------------------
-  sp1 <- observeEvent(input$pointsToMap, {
+  sp1 <- observeEvent(input$gbifPull, {
     # generate spatial object 
     pointsVals <- df1()|>
       sf::st_as_sf(coords = c("longitude","latitude"), crs = 4326, remove = FALSE)|>
@@ -369,23 +439,57 @@ server <- function(input, output) {
                        "<br/><b>Collector Name:</b> ", collector,
                        "<br/><b>Locality Description):</b> ", locality),
         color = case_when(
-          type == "Insitu" ~ "#4933ff",
-          type == "Exsitu" ~ "#0c9901"
+          type == "H" ~ "#1184d4",
+          type == "G" ~ "#6300f0"
         )
       )
+    
     # update the map 
+    # leafletProxy("map1")|>
+    #   setView(lng = pointsVals$longitude[1], lat = pointsVals$latitude[1], zoom = 6)|>
+    #   clearGroup(group = "Upload Dataset") |>
+    #   addCircleMarkers(
+    #     data = pointsVals,
+    #     color = ~color,
+    #     popup = ~popup,
+    #     group = "GBIF"
+    #   )|>
+    #   addLegend("topright", 
+    #             colors = c("#1184d4","#6300f0"),
+    #             labels = c("H","G"),
+    #             title = "GBIF Data",
+    #             opacity = 1)
+    # })
+    
+    # update the map
     leafletProxy("map1")|>
       setView(lng = pointsVals$longitude[1], lat = pointsVals$latitude[1], zoom = 6)|>
-      clearGroup(group = "observations") |>
+      clearGroup(group = "GBIF") |>
       addCircleMarkers(
         data = pointsVals,
         color = ~color,
+        stroke = FALSE,
+        fillOpacity = 0.9,
         popup = ~popup,
-        group = "observations"
+        group = "GBIF"
+      ) |>
+      # single legend for the GBIF features
+      addLegend(
+        position = "topright",
+        colors = c("#1184d4","#6300f0"),
+        labels = c("H","G"),
+        title = "GBIF Data",
+        opacity = 1,
+        group = "GBIF"
+      )|>
+      addLayersControl(
+        position = "topleft",
+        overlayGroups = c("GBIF"),
+        options = layersControlOptions(collapsed = FALSE)
       )
   })
   
-  # create spatial data for example/GBIF feature  -----------------------------------
+  # create spatial data for uploaded data  -----------------------------------
   sp2 <- observeEvent(input$uploadToMap, {
     # generate spatial object 
     pointsVals2 <- dataUpload()|>
@@ -396,8 +500,8 @@ server <- function(input, output) {
                        "<br/><b>Collector Name:</b> ", collector,
                        "<br/><b>Locality Description):</b> ", locality),
         color = case_when(
-          type == "H" ~ "#4933ff",
-          type == "G" ~ "#0c9901"
+          type == "H" ~ "#1184d4",
+          type == "G" ~ "#6300f0"
         )
       )
     # update the map 
@@ -407,14 +511,25 @@ server <- function(input, output) {
       addCircleMarkers(
         data = pointsVals2,
         color = ~color,
+        stroke = TRUE,
+        fillOpacity = 0.9,
         popup = ~popup,
-        group = "observations"
+        group = "Upload Dataset"
+      ) |>
+      # single legend for the GBIF features
+      addLegend(
+        position = "topright",
+        colors = c("#1184d4","#6300f0"),
+        labels = c("H","G"),
+        title = "Upload Dataset",
+        opacity = 1,
+        group = "Upload Dataset"
       )|>
-      addLegend("topright", 
-                colors = c("4933ff",  "#0c9901"),
-                labels = c("H","G"),
-                title = "Uploaded Data",
-                opacity = 1)
+      addLayersControl(
+        position = "topleft",
+        overlayGroups = c("Upload Dataset"),
+        options = layersControlOptions(collapsed = FALSE)
+      )
   })
   
   
