@@ -9,7 +9,6 @@ library("dplyr")
 library("stringr")
 
 
-
 ### Likely defunct with a pre-assembled Genus list being the base for TaxonID ###
 ## Core function ##
 query_gbif_taxonomy <- function(qstring, qrank) {
@@ -56,7 +55,6 @@ query_gbif_taxon_key_child <- function(qkey, qrank) {
 # Allows for optional filtering out multiple issues
 # reference issue codes can be found in issues.csv [https://github.com/AtlantaBotanicalGarden/gap-analysis-shiny-app/issues/2]
 query_gbif_occ <- function(taxonkey, allow_synonyms_bool = TRUE, issues_not_allowed = NULL) {
-  print("gbif response")
   gbif_response <- occ_data(taxonKey = taxonkey,
                             hasCoordinate = TRUE,
                             hasGeospatialIssue = FALSE)
