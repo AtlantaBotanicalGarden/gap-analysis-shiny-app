@@ -15,6 +15,9 @@ library(tools)
 library(vroom)
 library(rgbif)
 library(spocc)
+library(jsonlite)
+library(rgbif)
+library(stringr)
 # source modules --------------------------------------------------------
 lapply(list.files(
   path = "modules/",
@@ -24,29 +27,21 @@ lapply(list.files(
 
 # source UI or Server only functions ------------------------------------
 lapply(list.files(
-  path = "appFunctions/",
-  pattern = ".R",
+  path = "appFunctions",
+  pattern = ".r",
   full.names = TRUE),
   source)
 
 # global variables -----------------------------------------
-mafa <- read_csv("appData/magnolia_fraseri.csv")
-qubr <- read_csv("appData/Quercus_brandegeei.csv")
-allData <- bind_rows(mafa,qubr) |> 
-  as.data.frame()|>
-  # manually declare type 
-  dplyr::mutate(type = case_when(
-    type == "Exsitu" ~ "G",
-    type == "Insitu" ~ "H"
-  ))
-# temp data
-allGBIF <- read_csv("appData/Plantae_Taxon.csv") |>
-  dplyr::filter( genus %in% c("Magnolia", "Quercus"))|>
-  dplyr::select(-"...1", -"family")
+gbifBackbone <- read_csv("appData/gbifBackBone.csv")
 
+# column name structure 
+## use this once we have the file 
+JSONdata <- fromJSON('appData/data_validation.json')
+valid_data_structure <- JSONdata[[1]]
 
-tempTable <- allData |>
-  dplyr::filter(taxon=="Magnolia fraseri")
+# tempTable <- allData |>
+#   dplyr::filter(taxon=="Magnolia fraseri")
 
 # 
 map1 <- leaflet::leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16))|>
@@ -54,7 +49,7 @@ map1 <- leaflet::leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16))|>
 # 
 map2 <- map1
 
-expectedNames <- c("UID",	"taxon",	"genus",	"species",	"type",	"year",	"latitude",	"longitude",	"locality",	"collector")
+# expectedNames <- c("UID",	"taxon",	"genus",	"species",	"type",	"year",	"latitude",	"longitude",	"locality",	"collector")
 
 
 
@@ -193,7 +188,7 @@ ui <- fluidPage(
               shiny::selectInput(
                 inputId = "genusSelect",
                 label = "Genus: ",
-                choices = unique(allData$genus),
+                choices = unique(gbifBackbone$genus),
                 selected = "Magnolia"),
               # list of subspecies is generate for selection 
               uiOutput("speciesSelect"),
@@ -207,10 +202,17 @@ ui <- fluidPage(
             accordion_panel(
               "2. Add GBIF data to the map ",
               tags$br(),
-              "Currently this is going to load a static file of the Magnolia dataset ",
-              tags$br(),
               tags$strong("GBIF Taxon ID:"),  textOutput("gbiftaxonid"),
-              actionButton("gbifPull", "Add GBIF to map")
+              checkboxInput("allowSyn", "Allow Synonyms in Data", TRUE),
+              # p(tags$a(href = "https://docs.google.com/spreadsheets/d/1BeDUBCg2BJ1DYpW47bxYH8p8CJAVqgM5rafyz81RoOc/edit#gid=1735583299", "View GBIF Issue Codes ", target = "_blank")),
+              actionButton("gbifPull", "Download Data from Gbif"),
+              textInput("issueCodes", 
+                        label = tags$a(href = "https://docs.google.com/spreadsheets/d/1BeDUBCg2BJ1DYpW47bxYH8p8CJAVqgM5rafyz81RoOc/edit#gid=1735583299",
+                                       "View GBIF Issue Codes ", target = "_blank"), "see link below for options"),
+              tags$br(),
+              tags$strong("Download Details:"),  textOutput("gbifDownloadSpecifics"),
+              tags$br(),
+              actionButton("gbifToMap", "Add GBIF to map")
             ),
             accordion_panel(
               "3. Upload Your own data",
@@ -308,44 +310,6 @@ ui <- fluidPage(
   )## end navbar page
 )## end ui
   
-# 
-# ui <- page_navbar(
-#   title = "Gap Analysis and Metacollection Management",
-#   # set theme elements 
-#   ## settting the colors here is not working well at all... might just need to rely on the scss file but wait on that development wokr. 
-#   theme = bslib::bs_theme(
-#     version = 5,
-#     bootswatch = "yeti",
-#     base_font = font_google("Nunito Sans"),
-#     heading_font =  font_google("Merriweather")
-#   ),
-#   # header = 
-#   bg ="#52b788",
-#   window_title = "GAMMA Tool",
-#   
-#   br(),
-#   underline = TRUE,
-#   nav_spacer(),
-#   nav_panel("About",
-#             h3("Project Summary"),
-#             p(shinipsum::random_text(nwords = 100)),
-#             br(),
-#             tags$blockquote("The GAMMA tool will allow users to quantify and assess the completeness of recent collections made, as well as enable meta collection communities to assess the current ex situ conservation status and collection gaps across all participating collections.", cite = "Hadley Wickham"),
-#             br(),
-#             p(shinipsum::random_text(nwords = 50)),
-#             br(),
-#             plotOutput("image",height = "20px"),
-#             br(),
-#             p(random_text(nwords = 300))
-#             ),
-#   nav_panel("1. Gather and Clean Data ", 
-#             cards[[1]],),
-#   nav_panel("2. Run a Gap Analysis", 
-#             cards[[2]]),
-#   
-# )
-# 
-# 
 
 # server ----------------------------------------------------------------
 server <- function(input, output) {
@@ -354,7 +318,7 @@ server <- function(input, output) {
     # grab the selection
     genusPick = input$genusSelect
     # filter the data 
-    genusData <- allGBIF |>
+    genusData <- gbifBackbone |>
       dplyr::filter(genus == as.character(genusPick))
     # define selector 
     selectInput("speciesSelect", "Select a species", choices = sort(genusData$specificEpithet), selected = )
@@ -365,7 +329,7 @@ server <- function(input, output) {
     genusPick = input$genusSelect
     speciesPick = input$speciesSelect
     # filter the data
-    filteredData <- allGBIF |>
+    filteredData <- gbifBackbone |>
       dplyr::filter(genus == as.character(genusPick)) |>
       dplyr::filter(specificEpithet == as.character(speciesPick))
     # define selector
@@ -378,7 +342,7 @@ server <- function(input, output) {
     speciesPick = input$speciesSelect
     intraPick = input$taxonRank
     # filter the data
-    filteredData2 <- allGBIF |>
+    filteredData2 <- gbifBackbone |>
       dplyr::filter(genus == as.character(genusPick)) |>
       dplyr::filter(specificEpithet == as.character(speciesPick))|>
       dplyr::filter(taxonRank == as.character(intraPick))
@@ -397,7 +361,7 @@ server <- function(input, output) {
   
   # pull the gbif id from the selection 
   output$gbiftaxonid <- renderText({
-    f1 <- allGBIF |>
+    f1 <- gbifBackbone |>
       dplyr::filter(genus == as.character(input$genusSelect)) |>
       dplyr::filter(specificEpithet == as.character(input$speciesSelect))
     
@@ -414,24 +378,47 @@ server <- function(input, output) {
       
   })
 
-  # generate the table object 
-  df1 <- reactive({
-    # this is currently a static dataset but should be replaces with a gbif call 
-    allData |>
-      dplyr::filter(genus == "Magnolia")|>
-      dplyr::filter(species == "fraseri")
+  # generate the GBIF table data 
+  # df1 <- reactive({
+  #   f1 <- gbifData() |>
+  #     dplyr::filter(genus == as.character(input$genusSelect)) |>
+  #     dplyr::filter(specificEpithet == as.character(input$speciesSelect))
+  #   
+  #   if(as.character(input$taxonRank) == "species"){
+  #     f1
+  #   }else{
+  #     f1 |> 
+  #       dplyr::filter(taxonRank == as.character(input$taxonRank))|>
+  #       dplyr::filter(taxonRank == as.character(input$speciesIntrfraspecific))
+  #   }
+  # })
+
+  # Download data from GBIF -------------------------------------------------
+  gbifData <- eventReactive(input$gbifPull, {
+    # define params 
+    initialPull <- query_gbif_occ(taxonkey = 2878373,
+                   allow_synonyms_bool = TRUE)
     
-    # GBIF data to pull specific reference  
-    # allGBIF |>
-    #   dplyr::filter(genus == input$genusSelect)|>
-    #   dplyr::filter(specificEpithet == input$speciesSelect)
+    # filter to specific layers 
+    structureData <- etl_gbif_occ_data(gbif_occurrence_df = initialPull,
+                                       valid_data_structure = valid_data_structure)
+    
+    structureData
   })
-  
+  # 
+  output$gbifDownloadSpecifics <- renderText({
+    if(is.null(gbifData)){
+      "There is no data available on GBIF for this species"
+    }else{
+      paste0("The query returned ", nrow(gbifData), " records.")
+    }
+  })
+
 
   # create spatial data for example/GBIF feature  -----------------------------------
-  sp1 <- observeEvent(input$gbifPull, {
+  sp1 <- observeEvent(input$gbifToMap, {
     # generate spatial object 
-    pointsVals <- df1()|>
+    pointsVals <- gbifData() |>
       sf::st_as_sf(coords = c("longitude","latitude"), crs = 4326, remove = FALSE)|>
       dplyr::mutate(
         popup = paste0("<strong>", as.character(taxon),"</strong>", # needs to be text
@@ -443,23 +430,6 @@ server <- function(input, output) {
           type == "G" ~ "#6300f0"
         )
       )
-    
-    # update the map 
-    # leafletProxy("map1")|>
-    #   setView(lng = pointsVals$longitude[1], lat = pointsVals$latitude[1], zoom = 6)|>
-    #   clearGroup(group = "Upload Dataset") |>
-    #   addCircleMarkers(
-    #     data = pointsVals,
-    #     color = ~color,
-    #     popup = ~popup,
-    #     group = "GBIF"
-    #   )|>
-    #   addLegend("topright", 
-    #             colors = c("#1184d4","#6300f0"),
-    #             labels = c("H","G"),
-    #             title = "GBIF Data",
-    #             opacity = 1)
-    # })
     
     # update the map
     leafletProxy("map1")|>
@@ -580,7 +550,7 @@ server <- function(input, output) {
   
   
   output$map1 <- leaflet::renderLeaflet(map1)
-  output$mapTable <- renderDT(df1())
+  output$mapTable <- renderDT(gbifData())
   output$image <- renderImage(random_image())
   output$map2<- leaflet::renderLeaflet(map2)
   output$mapTable2 <- renderDT(shinipsum::random_DT(nrow = 5,ncol = 4))

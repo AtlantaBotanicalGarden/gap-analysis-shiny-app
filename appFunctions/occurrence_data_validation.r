@@ -1,10 +1,17 @@
-library("jsonlite")
 
-## ETL of User Supplied Occurrence Data into GAMMA data-type ##
-etl_occ_data <- function(occurrence_df) {
-  
-  JSONdata <- fromJSON('G:/Projects/gap-analysis-shiny-app/appData/data_validation.json')
-  valid_data_structure <- JSONdata[[1]]
+
+## 
+#' ETL of User Supplied Occurrence Data into GAMMA data-type 
+#'
+#' @param occurrence_df " 
+#' @param valid_data_structure 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+etl_occ_data <- function(occurrence_df, valid_data_structure) {
+
   
   valid_columns <- colnames(valid_data_structure)
   target_columns <- colnames(occurrence_df)
@@ -32,12 +39,19 @@ etl_occ_data <- function(occurrence_df) {
 
 
 ## ETL of GBIF Data into GAMMA data-type ##
-etl_gbif_occ_data <- function(gbif_occurrence_df) {
+etl_gbif_occ_data <- function(gbif_occurrence_df, valid_data_structure) {
   
-  JSONdata <- fromJSON('G:/Projects/gap-analysis-shiny-app/appData/data_validation.json')
-  valid_data_structure <- JSONdata[[1]]
-  
+  # this is selecting column but not renaming the feature. 
   formatted_occurrence_df <- gbif_occurrence_df[unlist(valid_data_structure, use.names = FALSE)]
+  # assigning names 
+  names(formatted_occurrence_df) <- c(names(valid_data_structure), "geometry")
+  
+  # run a classification on the basic of records for defining the type 
+  formatted_occurrence_df <- formatted_occurrence_df |>
+    mutate(type = case_when(
+      type != "LIVING_SPECIMEN" ~ "H",
+      type == "LIVING_SPECIMEN" ~ "G"
+    ))
   
   return(formatted_occurrence_df)
 }
