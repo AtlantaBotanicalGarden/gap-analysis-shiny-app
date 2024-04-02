@@ -61,7 +61,7 @@ ui <- fluidPage(
   theme = bslib::bs_theme(
     version = "5",
     bootswatch = "yeti",
-    bg = "#cce3de",
+    bg = "#FFFFFF",
     fg = "#655560",
     primary = "#52b788",
     secondary = "#f6bd60",
