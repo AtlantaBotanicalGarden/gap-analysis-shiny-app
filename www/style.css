@@ -4,4 +4,13 @@
   position: relative;
   min-height: 100vh;
   padding-bottom: 25rem;
+  /*background-color: #FFF;*/
+}
+
+
+/* card background color */ 
+.shiny-plot-output {
+  background-color: #216B7288;
+  height: 400px;
+  width: 100%;
 }

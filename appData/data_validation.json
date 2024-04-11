@@ -1,11 +1,7 @@
 {
     "GBIFDataMapping": [
         {
-<<<<<<< HEAD
             "UID": "identificationID",
-=======
-            "UID": "fieldNumber",
->>>>>>> e702658f21afe69f9499f0ade7c69ec5c47e8912
             "taxon": "scientificName",
             "genus": "genus",
             "species": "specificEpithet",
@@ -13,11 +9,7 @@
             "year": "year",
             "latitude": "decimalLatitude",
             "longitude": "decimalLongitude",
-<<<<<<< HEAD
             "locality": "verbatimLocality",
-=======
-            "locality": "locality",
->>>>>>> e702658f21afe69f9499f0ade7c69ec5c47e8912
             "collector": "recordedBy",
             "issues": "issues"
         }
