@@ -55,7 +55,15 @@ map1 <- leaflet::leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16))|>
     options = layersControlOptions(collapsed = TRUE)
   )
 # 
-map2 <- map1
+map2 <- leaflet::leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16))|>
+  addTiles()
+# |> 
+  # layer control groups should not be set at the map proxy level as they will overwrite the existing element.
+  # addLayersControl( 
+  #   position = "topleft",
+  #   overlayGroups = c("Reference Records", "Germplasma Records"),
+  #   options = layersControlOptions(collapsed = TRUE)
+  # )
 
 expectedNames <- c("UID",	"taxon",	"genus",	"species",	"type",	"year",	"latitude",	"longitude",	"locality",	"collector")
 
@@ -219,6 +227,10 @@ ui <- fluidPage(
       sidebar = sidebar(
         position = "right",
         accordion(
+          accordion_panel(
+            "Add Points to Map",
+            actionButton("addGapPoints", "Add records to the map")
+          ),
           accordion_panel(
             "Select Buffer Size",
             selectInput("bufferSize", "Select Buffer Distances in KM", choices = c("1", "5", "10","20","50"), selected = "50")
@@ -600,12 +612,12 @@ server <- function(input, output) {
     
     
   })
-
+  
   # compile dataset for the gap analysis page  ------------------------------
   gapAnalysisInput <- reactive({
-    # d1 <- NA
-    # d2 <- NA
-    # d3 <- NA
+    d1 <- NA
+    d2 <- NA
+    d3 <- NA
     req(input$compileDatasets)
     d1 <- try(gbifData()|>
                 dplyr::mutate(source = "GBIF",
@@ -628,6 +640,131 @@ server <- function(input, output) {
     }
     outputTable
   })
+  
+
+  # intial map on gap analysis page -----------------------------------------
+  gapPoints <-  reactive({
+    req(input$compileDatasets)
+    gapAnalysisInput()|>
+      sf::st_as_sf(coords = c("longitude","latitude"), crs = 4326, remove = FALSE)|>
+      dplyr::mutate(
+        popup = paste0("<strong>", as.character(taxon),"</strong>", # needs to be text
+                       "<br/><strong> Type: </strong>", type,
+                       "<br/><b>Collector Name:</b> ", collector,
+                       "<br/><b>Locality Description):</b> ", locality,
+                       "<br/><b>Data Source:</b> ", source),
+        color = case_when(
+          type == "H" ~ "#1184d4",
+          type == "G" ~ "#6300f0"
+        )
+      )
+  })
+    
+  observeEvent(input$addGapPoints, {
+    # # generate spatial object 
+    # gapPoints <- gapAnalysisInput()|>
+    #   sf::st_as_sf(coords = c("longitude","latitude"), crs = 4326, remove = FALSE)|>
+    #   dplyr::mutate(
+    #     popup = paste0("<strong>", as.character(taxon),"</strong>", # needs to be text
+    #                    "<br/><strong> Type: </strong>", type,
+    #                    "<br/><b>Collector Name:</b> ", collector,
+    #                    "<br/><b>Locality Description):</b> ", locality,
+    #                    "<br/><b>Data Source:</b> ", source),
+    #     color = case_when(
+    #       type == "H" ~ "#1184d4",
+    #       type == "G" ~ "#6300f0"
+    #     )
+    #   )
+    # spilt out the G and H points 
+    gGap <- gapPoints() |>
+      dplyr::filter(type == "G")
+    hGap <- gapPoints() |>
+      dplyr::filter(type == "H")
+    if(nrow(gGap)==0){
+      # update the map 
+      leafletProxy("map2")|>
+        setView(lng = mean(gapPoints()$longitude), lat = mean(gapPoints()$latitude), zoom = 6)|>
+        addCircleMarkers(
+          data = hGap,
+          color = ~color,
+          stroke = TRUE,
+          fillOpacity = 0.9,
+          popup = ~popup,
+          group = "Reference Records"
+        )|>
+        # single legend for the GBIF features
+        addLegend(
+          position = "topright",
+          layerId = "referencelegend",
+          colors = c("#1184d4"),
+          labels = c("H"),
+          title = "Reference Records",
+          opacity = 1,
+          group = "Reference Records"
+        )
+    }else{
+      # update the map 
+      leafletProxy("map2")|>
+        setView(lng = mean(gapPoints()$longitude), lat = mean(gapPoints()$latitude), zoom = 6)|>
+        addCircleMarkers(
+          data = hGap,
+          color = ~color,
+          stroke = TRUE,
+          fillOpacity = 0.9,
+          popup = ~popup,
+          group = "Reference Records"
+        ) |>
+        addCircleMarkers(
+          data = gGap,
+          color = ~color,
+          stroke = TRUE,
+          fillOpacity = 0.9,
+          popup = ~popup,
+          group = "Germplasma Records"
+        ) |>
+        # single legend for the GBIF features
+        addLegend(
+          position = "topright",
+          layerId = "referencelegend",
+          colors = c("#1184d4"),
+          labels = c("H"),
+          title = "Reference Records",
+          opacity = 1,
+          group = "Reference Records"
+        ) |>
+        addLegend(
+          position = "topright",
+          layerId = "germplasmalegend",
+          colors = c("#6300f0"),
+          labels = c("G"),
+          title = "Germplasma Records",
+          opacity = 1,
+          group = "Germplasma Records"
+        ) 
+    }
+
+  })
+
+  # Gap analysis method  ----------------------------------------------------
+
+  ## buffer points -----------------------------------------------------------
+  buffers <- reactive({
+    req(input$runGapAnalysis)
+    bufferObjects <- gapAnalysisInput()|>
+      sf::st_as_sf(coords = c("longitude","latitude"), crs = 4326, remove = FALSE)|>
+      dplyr::mutate(
+        popup = paste0("<strong>", as.character(taxon),"</strong>", # needs to be text
+                       "<br/><strong> Type: </strong>", type,
+                       "<br/><b>Collector Name:</b> ", collector,
+                       "<br/><b>Locality Description):</b> ", locality,
+                       "<br/><b>Data Source:</b> ", source),
+        color = case_when(
+          type == "H" ~ "#1184d4",
+          type == "G" ~ "#6300f0"
+        )
+      )
+    
+    })
   # gapAnalysisInput <- eventReactive(input$compileDatasets, {
   #   mapData <- data.frame(matrix(nrow = 1, ncol = length(expectedNames)+1))
   #   names(mapData) <- c(expectedNames, "source")
