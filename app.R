@@ -89,98 +89,20 @@ ui <- fluidPage(
     # footer = p("this is footer content? Not very good at the moment"),
     # set some space between the Application title and the tab selectors 
     nav_spacer(),
-  # landing page panel ------------------------------------------------------
-  nav_panel(
-    title = "About",
-    card(full_screen = TRUE,
-         h3("Project Summary"),
-         p(shinipsum::random_text(nwords = 100))
-         ),
-    br(),
-    tags$blockquote("The GAMMA tool will allow users to quantify and assess the completeness of recent collections made, as well as enable meta collection communities to assess the current ex situ conservation status and collection gaps across all participating collections.", cite = "Hadley Wickham"),
-    br(),
-    fluidRow(
-      column(12,
-             div(em("For any questions or feedback please reach out to Maintainer of the Website @ there email.com"),
-                 style="text-align:left"))
-    ),
-    h2("Project Background"),
-    p(style="text-align: center;",
-      "This project was led by Alanta Botanical Garden in collaboration with the IMLS GCC Growing
-      Metacollections team which includes individuals from ",
-      tags$a(href = "https://mortonarb.org/", "The Morton Arboretum", target = "_blank"),
-      ", ",
-      tags$a(href = "https://sdbg.org/", "San Diego Botanic Garden", target = "_blank"),
-      ", ",
-      tags$a(href = "https://www.montgomerybotanicalgardens.com/", "Montgomery Botanical Gardens at Oak Park", target = "_blank"),
-      ", ",
-      tags$a(href = "https://www.smith.edu/", "Smith College", target = "_blank"),
-      ", ",
-      tags$a(href = "https://www.auburn.edu/", "Auburn University", target = "_blank"),
-      ", ",
-      tags$a(href = "https://www.lotusland.org/", "Lotus Land", target = "_blank"),
-      ".",
-      tags$br(),
-       tags$strong("This work is made possible by the Institute of Museum and Library Services ",
-      tags$a(href = "https://www.imls.gov/", "(MG-252894-OMS-23).", target = "_blank"),
-      "." ),
-    ),
-    fluidRow(
-      p("Multiple logos?"),
-      column(3,
-             div(img(src="temp.png", alt="Logo 2", align="center", width="60%"), style="text-align:center")),
-      column(3,
-             div(img(src="temp.png", alt="Logo 2", align="center", width="60%"), style="text-align:center")),
-      column(3,
-             div(img(src="temp.png", alt="Logo 3", align="center", width="50%"), style="text-align:center")),
-      column(3,
-             div(img(src="temp.png", alt="Logo 4", align="center", width="40%"), style="text-align:center"))
-    ),
-    br(),
-    fluidRow(
-      p("Or a single logo?"),
-      column(2),
-      column(8,
-             div(img(src="Metacollections project logo_color.png", alt="Logo 2", align="center", width="60%"), style="text-align:center")),
-      column(2),
-    ),
-    
-    card(full_screen = TRUE,
-         h3("Learn More"),
-         p(random_text(nwords = 300)),
-         br()
-         ),
-    hr(),
-    h2("Who We Are"),
-    p("This website is the result of a collaboration among the following individuals and institutions:"),
-    fluidRow(
-      column(3,
-             strong("Alanta Botanical Garden"),
-             p(tags$a(href = "https://atlantabg.org/article/emily-e-d-coffey-ph-d/", "Emily E. D. Coffey, Ph.D", target = "_blank")),
-             p(tags$a(href = "https://atlantabg.org/article/jean-linsky-m-sc/", "Jean Linsky, M.Sc.", target = "_blank")),
-            p("etc...")
-      ),
-      column(3,
-             strong("Other organizations and people as needed"),
-             p("Superstar 1"),
-             p("Superstar 2")
-      ),
-    ),
-  ),
   # Data Evaluation ---------------------------------------------------------
   nav_panel(
     title = "Data Evaluation",
     # because of the fixed header this need to be pushed down
-    h2("Data Evaluation"),
-    p("On this page individuals will be able to "),
-    br(),
-    tags$ul(
-      tags$li("Select the Gensus and species being evaluated"),
-      tags$li("Grab data on the species from GBIF"),
-      tags$li("Upload data from a local environment into the tool"),
-      tags$li("Evaluate the data from GBIF and the local environment on the map"),
-      tags$li("future : remove points from the analys based on the data onmap")
-    ),
+    # h2("Data Evaluation"),
+    # p("On this page individuals will be able to "),
+    # br(),
+    # tags$ul(
+    #   tags$li("Select the Gensus and species being evaluated"),
+    #   tags$li("Grab data on the species from GBIF"),
+    #   tags$li("Upload data from a local environment into the tool"),
+    #   tags$li("Evaluate the data from GBIF and the local environment on the map"),
+    #   tags$li("future : remove points from the analys based on the data onmap")
+    # ),
    
       # define row for containing the map feaut
       # defeine the sidebar element
@@ -326,6 +248,84 @@ ui <- fluidPage(
       )
     )
   ),## end gap analysis page
+  # landing page panel ------------------------------------------------------
+  nav_panel(
+    title = "About",
+    card(full_screen = TRUE,
+         h3("Project Summary"),
+         p(shinipsum::random_text(nwords = 100))
+    ),
+    br(),
+    tags$blockquote("The GAMMA tool will allow users to quantify and assess the completeness of recent collections made, as well as enable meta collection communities to assess the current ex situ conservation status and collection gaps across all participating collections.", cite = "Hadley Wickham"),
+    br(),
+    fluidRow(
+      column(12,
+             div(em("For any questions or feedback please reach out to Maintainer of the Website @ there email.com"),
+                 style="text-align:left"))
+    ),
+    h2("Project Background"),
+    p(style="text-align: center;",
+      "This project was led by Alanta Botanical Garden in collaboration with the IMLS GCC Growing
+      Metacollections team which includes individuals from ",
+      tags$a(href = "https://mortonarb.org/", "The Morton Arboretum", target = "_blank"),
+      ", ",
+      tags$a(href = "https://sdbg.org/", "San Diego Botanic Garden", target = "_blank"),
+      ", ",
+      tags$a(href = "https://www.montgomerybotanicalgardens.com/", "Montgomery Botanical Gardens at Oak Park", target = "_blank"),
+      ", ",
+      tags$a(href = "https://www.smith.edu/", "Smith College", target = "_blank"),
+      ", ",
+      tags$a(href = "https://www.auburn.edu/", "Auburn University", target = "_blank"),
+      ", ",
+      tags$a(href = "https://www.lotusland.org/", "Lotus Land", target = "_blank"),
+      ".",
+      tags$br(),
+      tags$strong("This work is made possible by the Institute of Museum and Library Services ",
+                  tags$a(href = "https://www.imls.gov/", "(MG-252894-OMS-23).", target = "_blank"),
+                  "." ),
+    ),
+    fluidRow(
+      p("Multiple logos?"),
+      column(3,
+             div(img(src="temp.png", alt="Logo 2", align="center", width="60%"), style="text-align:center")),
+      column(3,
+             div(img(src="temp.png", alt="Logo 2", align="center", width="60%"), style="text-align:center")),
+      column(3,
+             div(img(src="temp.png", alt="Logo 3", align="center", width="50%"), style="text-align:center")),
+      column(3,
+             div(img(src="temp.png", alt="Logo 4", align="center", width="40%"), style="text-align:center"))
+    ),
+    br(),
+    fluidRow(
+      p("Or a single logo?"),
+      column(2),
+      column(8,
+             div(img(src="Metacollections project logo_color.png", alt="Logo 2", align="center", width="60%"), style="text-align:center")),
+      column(2),
+    ),
+    
+    card(full_screen = TRUE,
+         h3("Learn More"),
+         p(random_text(nwords = 300)),
+         br()
+    ),
+    hr(),
+    h2("Who We Are"),
+    p("This website is the result of a collaboration among the following individuals and institutions:"),
+    fluidRow(
+      column(3,
+             strong("Alanta Botanical Garden"),
+             p(tags$a(href = "https://atlantabg.org/article/emily-e-d-coffey-ph-d/", "Emily E. D. Coffey, Ph.D", target = "_blank")),
+             p(tags$a(href = "https://atlantabg.org/article/jean-linsky-m-sc/", "Jean Linsky, M.Sc.", target = "_blank")),
+             p("etc...")
+      ),
+      column(3,
+             strong("Other organizations and people as needed"),
+             p("Superstar 1"),
+             p("Superstar 2")
+      ),
+    ),
+  ),
   nav_spacer(),
 
   # Links -------------------------------------------------------------------
@@ -394,9 +394,7 @@ server <- function(input, output) {
     }else{
       f1 <- gbifBackbone |> 
         dplyr::filter(taxonRank == as.character(input$taxonRank))|>
-        dplyr::filter(infraspecificEpithet == as.character(input$speciesInfraspecific)) #|>
-      #dplyr::select(taxonID)|>
-      #dplyr::pull()
+        dplyr::filter(infraspecificEpithet == as.character(input$speciesInfraspecific)) 
       f1$taxonID[1]
     }
     
@@ -404,10 +402,7 @@ server <- function(input, output) {
 
   # Download data from GBIF -------------------------------------------------
   gbifData <- eventReactive(input$gbifPull, {
-    # f1 <- gbifBackbone |>
-    #   dplyr::filter(genus == as.character(input$genusSelect)) |>
-    #   dplyr::filter(specificEpithet == as.character(input$speciesSelect))
-    
+
     if(as.character(input$taxonRank) == "species"){
       f1 <- gbifBackbone |>
         dplyr::filter(genus == as.character(input$genusSelect)) |>
@@ -417,9 +412,7 @@ server <- function(input, output) {
     }else{
       f1 <- gbifBackbone |> 
         dplyr::filter(taxonRank == as.character(input$taxonRank))|>
-        dplyr::filter(infraspecificEpithet == as.character(input$speciesInfraspecific)) #|>
-      #dplyr::select(taxonID)|>
-      #dplyr::pull()
+        dplyr::filter(infraspecificEpithet == as.character(input$speciesInfraspecific)) 
       taxonID <- f1$taxonID[1]
     }
 
@@ -609,24 +602,50 @@ server <- function(input, output) {
   })
 
   # compile dataset for the gap analysis page  ------------------------------
-  mapData <- data.frame(matrix(nrow = 1, ncol = length(expectedNames)+1))
-  names(mapData) <- c(expectedNames, "source")
-  
-  gapAnalysisInput <- eventReactive(input$compileDatasets, {
-    # test for presences of data
-    if(!is.null(gbifData())){
-      d1 <- gbifData()|>
-        dplyr::mutate(source = "GBIF")
-      mapData <- bind_rows(mapData, d1) # I don't think this is going to work super well but let's run with it. 
+  gapAnalysisInput <- reactive({
+    # d1 <- NA
+    # d2 <- NA
+    # d3 <- NA
+    req(input$compileDatasets)
+    d1 <- try(gbifData()|>
+                dplyr::mutate(source = "GBIF",
+                              UID = as.character(UID)))
+    d2 <- try(dataUpload()|>
+                dplyr::mutate(source = "upload",
+                              UID = as.character(UID)))
+    d3 <- try(dplyr::bind_rows(d1,d2))
+    # both datasets 
+    if("data.frame" %in% class(d3)){
+      outputTable <- d3
     }
-    #upload 
-    if(!is.null(gbifData())){
-      d2 <- dataUpload()|>
-        dplyr::mutate(source = "upload")
-      mapData <- bind_rows(mapData, d2)
+    # upload olny
+    if("data.frame" %in% class(d2) && !"data.frame" %in% class(d1)){
+      outputTable <- d2
     }
-    mapData
+    #gbif only 
+    if(!"data.frame" %in% class(d2) && "data.frame" %in% class(d1)){
+      outputTable <- d1
+    }
+    outputTable
   })
+  # gapAnalysisInput <- eventReactive(input$compileDatasets, {
+  #   mapData <- data.frame(matrix(nrow = 1, ncol = length(expectedNames)+1))
+  #   names(mapData) <- c(expectedNames, "source")
+  #   
+  #   # test for presences of data
+  #   if(!is.null(gbifData())){
+  #     d1 <- gbifData()|>
+  #       dplyr::mutate(source = "GBIF")
+  #     mapData2 <- bind_rows(mapData, d1) # I don't think this is going to work super well but let's run with it. 
+  #   }
+  #   #upload 
+  #   if(!is.null(dataUpload())){
+  #     d2 <- dataUpload()|>
+  #       dplyr::mutate(source = "upload")
+  #     mapData2 <- bind_rows(mapData, d2)
+  #   }
+  #   mapData2
+  # })
   
   # 
   output$map1 <- leaflet::renderLeaflet(map1)
@@ -635,7 +654,7 @@ server <- function(input, output) {
   
   output$image <- renderImage(random_image())
   output$map2<- leaflet::renderLeaflet(map2)
-  output$mapTable2 <- renderDT(gapAnalysisInput())
+  output$mapTable2 <- renderDT(gapAnalysisInput()) # shinipsum::random_DT(nrow = 10, ncol = 10))
 
 }
 
