@@ -643,6 +643,7 @@ server <- function(input, output) {
   
 
   # intial map on gap analysis page -----------------------------------------
+  
   gapPoints <-  reactive({
     req(input$compileDatasets)
     gapAnalysisInput()|>
@@ -748,21 +749,26 @@ server <- function(input, output) {
   # Gap analysis method  ----------------------------------------------------
 
   ## buffer points -----------------------------------------------------------
-  buffers <- reactive({
-    req(input$runGapAnalysis)
-    bufferObjects <- gapAnalysisInput()|>
-      sf::st_as_sf(coords = c("longitude","latitude"), crs = 4326, remove = FALSE)|>
-      dplyr::mutate(
-        popup = paste0("<strong>", as.character(taxon),"</strong>", # needs to be text
-                       "<br/><strong> Type: </strong>", type,
-                       "<br/><b>Collector Name:</b> ", collector,
-                       "<br/><b>Locality Description):</b> ", locality,
-                       "<br/><b>Data Source:</b> ", source),
-        color = case_when(
-          type == "H" ~ "#1184d4",
-          type == "G" ~ "#6300f0"
-        )
-      )
+  buffers <- eventReactive( input$runGapAnalysis, {
+    # produce buffers 
+    bufferObjects <- gapPoints()|>
+      terra::vect()|>
+      terra::buffer(width = inputsbufferSize)
+    # Gather the area for the features 
+    total <-  bufferObjects |>
+      terra::aggregate()|>
+      terra::expanse(unit="km")
+    # split out G and H and dissolve
+    ## G
+    gVals <- bufferObjects[bufferObjects$type == "G", ]
+    gArea <- gVals |> 
+      terra::aggregate()|>
+      terra::expanse(unit="km")
+    ## H 
+    hVals <- bufferObjects[bufferObjects$type == "H", ]
+    hArea <- gVals |> 
+      terra::aggregate()|>
+      terra::expanse(unit="km")
     
     })
   # gapAnalysisInput <- eventReactive(input$compileDatasets, {

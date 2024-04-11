@@ -5,10 +5,10 @@ account: atlantabg
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 11673748
-bundleId: 8464931
+bundleId: 8483111
 url: https://atlantabg.shinyapps.io/GAMMA/
-when: 1712513639.47452
-lastSyncTime: 1712513639.47453
+when: 1712873008.90281
+lastSyncTime: 1712873008.90281
 asMultiple: FALSE
 asStatic: FALSE
 ignoredFiles: dataToPreProcess/spatialData.gpkg|dataToPreProcess/Untitled|preprocessingFunctions/filterGBIFTaxonomy.R|preprocessingFunctions/grabDataFromGoogleDrive.R|preprocessingFunctions/processVitisTestData.R|preprocessingFunctions/Untitled|README.html|README.md|utilities/Untitled|www/style.scss
