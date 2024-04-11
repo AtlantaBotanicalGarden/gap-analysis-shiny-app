@@ -203,7 +203,7 @@ ui <- fluidPage(
               # when possible the option for var subsp is listed
               uiOutput("taxonRank"),
               # final filter of sub species it provided 
-              uiOutput("speciesIntrfraspecific"),
+              uiOutput("speciesInfraspecific"),
               # print the current taxon name 
               textOutput("currentSpecies")
             ),
@@ -353,35 +353,39 @@ server <- function(input, output) {
   })
   # UI select variaty/subspec
   output$taxonRank = renderUI({
+    
     # grab the selection
-    genusPick = input$genusSelect
-    speciesPick = input$speciesSelect
+    ####genusPick = input$genusSelect
+    ####speciesPick = input$speciesSelect
+    
     # filter the data
     filteredData <- gbifBackbone |>
-      dplyr::filter(genus == as.character(genusPick)) |>
-      dplyr::filter(specificEpithet == as.character(speciesPick))
+      dplyr::filter(genus == as.character(input$genusSelect)) |>
+      dplyr::filter(specificEpithet == as.character(input$speciesSelect))
     # define selector
     selectInput("taxonRank", "Select a taxon rank", choices = filteredData$taxonRank, selected = )
   })
   # UI select sub species feature
-  output$speciesIntrfraspecific = renderUI({
+  output$speciesInfraspecific = renderUI({
+    
     # grab the selection
-    genusPick = input$genusSelect
-    speciesPick = input$speciesSelect
-    intraPick = input$taxonRank
+    ###genusPick = input$genusSelect
+    ###speciesPick = input$genusSelect
+    ###infraPick = input$genusSelect
+    
     # filter the data
     filteredData2 <- gbifBackbone |>
-      dplyr::filter(genus == as.character(genusPick)) |>
-      dplyr::filter(specificEpithet == as.character(speciesPick))|>
-      dplyr::filter(taxonRank == as.character(intraPick))
+      dplyr::filter(genus == as.character(input$genusSelect)) |>
+      dplyr::filter(specificEpithet == as.character(input$speciesSelect))|>
+      dplyr::filter(taxonRank == as.character(input$taxonRank))
       
     # define selector
-    selectInput("speciesIntrfraspecific", "Select a infraspecific epithet", choices = filteredData2$infraspecificEpithet, selected = )
+    selectInput("speciesInfraspecific", "Select a infraspecific epithet", choices = filteredData2$infraspecificEpithet, selected = )
   })
   output$currentSpecies = renderText({
     name <- paste0("Current Taxon: ", input$genusSelect, " ",tolower(input$speciesSelect), " ")
     if(input$taxonRank != "species"){
-      name <- paste0(name, tolower(input$taxonRank), " ", tolower(input$speciesIntrfraspecific))
+      name <- paste0(name, tolower(input$taxonRank), " ", tolower(input$speciesInfraspecific))
     }
     # pass the object to render
     name
@@ -395,14 +399,18 @@ server <- function(input, output) {
       dplyr::filter(specificEpithet == as.character(input$speciesSelect))
     
     if(as.character(input$taxonRank) == "species"){
+      f1 <- gbifBackbone |>
+        dplyr::filter(genus == as.character(input$genusSelect)) |>
+        dplyr::filter(specificEpithet == as.character(input$speciesSelect)) |>
+        dplyr::filter(taxonRank == as.character(input$taxonRank))
       f1$taxonID[1]
     }else{
-      f1 |> 
+      f1 <- gbifBackbone |> 
         dplyr::filter(taxonRank == as.character(input$taxonRank))|>
-        dplyr::filter(taxonRank == as.character(input$speciesIntrfraspecific))|>
-        dplyr::select(taxonID)|>
-        dplyr::pull()
-      
+        dplyr::filter(infraspecificEpithet == as.character(input$speciesInfraspecific)) #|>
+        #dplyr::select(taxonID)|>
+        #dplyr::pull()
+      f1$taxonID[1]
     }
       
   })
