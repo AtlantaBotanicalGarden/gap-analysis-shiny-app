@@ -343,21 +343,14 @@ ui <- fluidPage(
 server <- function(input, output) {
   # UI select Subspecies 
   output$speciesSelect = renderUI({
-    # grab the selection
-    genusPick = input$genusSelect
     # filter the data 
     genusData <- gbifBackbone |>
-      dplyr::filter(genus == as.character(genusPick))
+      dplyr::filter(genus == as.character(input$genusSelect))
     # define selector 
     selectInput("speciesSelect", "Select a species", choices = sort(genusData$specificEpithet), selected = )
   })
   # UI select variaty/subspec
   output$taxonRank = renderUI({
-    
-    # grab the selection
-    ####genusPick = input$genusSelect
-    ####speciesPick = input$speciesSelect
-    
     # filter the data
     filteredData <- gbifBackbone |>
       dplyr::filter(genus == as.character(input$genusSelect)) |>
@@ -367,12 +360,6 @@ server <- function(input, output) {
   })
   # UI select sub species feature
   output$speciesInfraspecific = renderUI({
-    
-    # grab the selection
-    ###genusPick = input$genusSelect
-    ###speciesPick = input$genusSelect
-    ###infraPick = input$genusSelect
-    
     # filter the data
     filteredData2 <- gbifBackbone |>
       dplyr::filter(genus == as.character(input$genusSelect)) |>
@@ -408,39 +395,42 @@ server <- function(input, output) {
       f1 <- gbifBackbone |> 
         dplyr::filter(taxonRank == as.character(input$taxonRank))|>
         dplyr::filter(infraspecificEpithet == as.character(input$speciesInfraspecific)) #|>
-        #dplyr::select(taxonID)|>
-        #dplyr::pull()
+      #dplyr::select(taxonID)|>
+      #dplyr::pull()
       f1$taxonID[1]
     }
-      
+    
   })
 
   # Download data from GBIF -------------------------------------------------
   gbifData <- eventReactive(input$gbifPull, {
-    ### repeated method from print render 
-    f1 <- gbifBackbone |>
-      dplyr::filter(genus == as.character(input$genusSelect)) |>
-      dplyr::filter(specificEpithet == as.character(input$speciesSelect))
+    # f1 <- gbifBackbone |>
+    #   dplyr::filter(genus == as.character(input$genusSelect)) |>
+    #   dplyr::filter(specificEpithet == as.character(input$speciesSelect))
     
     if(as.character(input$taxonRank) == "species"){
-      f2 <- f1$taxonID[1] # issue 
+      f1 <- gbifBackbone |>
+        dplyr::filter(genus == as.character(input$genusSelect)) |>
+        dplyr::filter(specificEpithet == as.character(input$speciesSelect)) |>
+        dplyr::filter(taxonRank == as.character(input$taxonRank))
+      taxonID <- f1$taxonID[1]
     }else{
-      f2 <- f1 |> 
+      f1 <- gbifBackbone |> 
         dplyr::filter(taxonRank == as.character(input$taxonRank))|>
-        dplyr::filter(taxonRank == as.character(input$speciesIntrfraspecific))|>
-        dplyr::select(taxonID)|>
-        dplyr::pull()
-      
+        dplyr::filter(infraspecificEpithet == as.character(input$speciesInfraspecific)) #|>
+      #dplyr::select(taxonID)|>
+      #dplyr::pull()
+      taxonID <- f1$taxonID[1]
     }
-    
-    # define params 
-    initialPull <- query_gbif_occ(taxonkey = f2,
+
+    # define params
+    initialPull <- query_gbif_occ(taxonkey = taxonID,
                    allow_synonyms_bool = TRUE)
-    
-    # filter to specific layers 
+
+    # filter to specific layers
     structureData <- etl_gbif_occ_data(gbif_occurrence_df = initialPull,
                                        valid_data_structure = valid_data_structure)
-    
+
     structureData
   })
   

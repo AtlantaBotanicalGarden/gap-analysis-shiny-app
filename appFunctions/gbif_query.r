@@ -19,7 +19,8 @@ query_gbif_occ <- function(taxonkey, allow_synonyms_bool = TRUE, issues_not_allo
   gbif_response1 <- rgbif::occ_data(taxonKey = taxonkey,
                             hasCoordinate = TRUE,
                             hasGeospatialIssue = FALSE,
-                            basisOfRecord = "LIVING_SPECIMEN"
+                            basisOfRecord = "LIVING_SPECIMEN",
+                            limit = 500
                             )
   # Set the total number to be less then or equal to 500
   if(is.null(nrow(gbif_response1$data))){
@@ -34,7 +35,7 @@ query_gbif_occ <- function(taxonkey, allow_synonyms_bool = TRUE, issues_not_allo
                                    limit = pull)
   # bind the datasets
   if(is.null(nrow(gbif_response1$data))){
-    parsed_response <- gbif_response2
+    parsed_response <- gbif_response2$data
   }else{
     parsed_response <- dplyr::bind_rows(gbif_response1$data, gbif_response2$data)
   }
@@ -45,7 +46,7 @@ query_gbif_occ <- function(taxonkey, allow_synonyms_bool = TRUE, issues_not_allo
   if(pattern != ""){
     parsed_response <- filter(parsed_reponse, !str_detect(parsed_reponse$issues, pattern))
   }
-  
+  # I think we would want to do this in the inital query not filter after the fact because we are setting the 500 features limit. 
   if(allow_synonyms_bool == FALSE){
     parsed_response <- parsed_response[parsed_response$taxonomicStatus == "ACCEPTED",]
   }
