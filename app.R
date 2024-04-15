@@ -19,6 +19,7 @@ library(jsonlite)
 library(rgbif)
 library(stringr)
 library(shinycssloaders)
+library(plotly)
 # source modules --------------------------------------------------------
 lapply(list.files(
   path = "modules/",
@@ -86,7 +87,7 @@ ui <- fluidPage(
   ),
   includeCSS("www/style.css"),
 
-  # navbarPage --------------------------------------------------------------
+  ## navbarPage --------------------------------------------------------------
   ### primary container for the application. 
   page_navbar(
     title = "Gap Analysis and Metacollection Management",
@@ -97,7 +98,7 @@ ui <- fluidPage(
     # footer = p("this is footer content? Not very good at the moment"),
     # set some space between the Application title and the tab selectors 
     nav_spacer(),
-  # Data Evaluation ---------------------------------------------------------
+  ## Data Evaluation ---------------------------------------------------------
   nav_panel(
     title = "Data Evaluation",
     # because of the fixed header this need to be pushed down
@@ -208,7 +209,7 @@ ui <- fluidPage(
       # downloadButton("download1", "Download the current table")
     ), ## end data analysis page
 
-  # Gap Analysis ------------------------------------------------------------
+  ## Gap Analysis ------------------------------------------------------------
   nav_panel(
     title = "Gap Analysis",
     h2("Gap Analysis"),
@@ -252,15 +253,22 @@ ui <- fluidPage(
         card_footer("Description of the map? ")
       )
     ),
-    card(
-      card_header("Results of the Gap Analysis"),
-      DTOutput("mapTable2"),
-      card_footer(
-        actionButton("exportGapTable", "Download the current table")
-      )
+    navset_card_tab(
+        height = 450,
+        full_screen = TRUE,
+        title = "Results of the Gap Analysis",
+        nav_panel(
+          "Gap Analysis Results",
+          plotlyOutput('gapAnalysisResults')
+        ),
+        nav_panel(
+          "Input Data",
+          DTOutput("mapTable2"),
+        ),
+
     )
   ),## end gap analysis page
-  # landing page panel ------------------------------------------------------
+  ## landing page panel ------------------------------------------------------
   nav_panel(
     title = "About",
     card(full_screen = TRUE,
@@ -340,7 +348,7 @@ ui <- fluidPage(
   ),
   nav_spacer(),
 
-  # Links -------------------------------------------------------------------
+  ## Links -------------------------------------------------------------------
     nav_menu(
       title = "External Links",
       align = "right",
@@ -467,7 +475,7 @@ server <- function(input, output) {
     
     # update the map
     leafletProxy("map1")|>
-      setView(lng = pointsVals$longitude[1], lat = pointsVals$latitude[1], zoom = 6)|>
+      setView(lng = mean(pointsVals$longitude), lat = mean(pointsVals$latitude), zoom = 6)|>
       addCircleMarkers(
         data = pointsVals,
         color = ~color,
@@ -747,7 +755,24 @@ server <- function(input, output) {
   })
 
   # Gap analysis method  ----------------------------------------------------
+  ## calculate the SRSex -- number of G points / total number of points 
+  ## buffer the points 
+  ## calculate the GRSex -- total G buffer area / total area 
+  ## calculate the ERSex -- total number of ecorgions within the g buffer / total number of eco regions 
+  ## display data on a chart 
+  
+  
+  
+  ## srs ex ------------------------------------------------------------------
+  srsex <- eventReactive(input$compileDatasets, {
+    gGap <- gapPoints() |>
+      dplyr::filter(type == "G")
+    srsScore <- (nrow(gGap)/ nrow(gapPoints()))*100
+    srsScore
+  })
 
+
+  
   ## buffer points -----------------------------------------------------------
   buffers <- eventReactive( input$runGapAnalysis, {
     # produce buffers 
@@ -790,7 +815,58 @@ server <- function(input, output) {
   #   mapData2
   # })
   
-  # 
+
+  ## render gap analysis plot ------------------------------------------------
+    gapAnalysisResultsFigure<- reactive({
+      req(input$runGapAnalysis)
+      # define the base table 
+      df <- data.frame(class = c(
+        "Sampling Representativeness Score",
+        "Ecological Representativeness Score",
+        "Geographic Representativeness Score", 
+        "Final Representativeness Score"
+      ),
+      score = c(0,0,0,0))
+      # assign values based on the presence of specific output values 
+      df$score[1] <- try(srsex())
+      df$score[2] <- 51 # try(ersex())
+      df$score[3] <- 89 # try(grsex())
+      # assign the fcsex score 
+      df$score[4] <- try(mean(df[1:3, "score"], na.rm = TRUE))
+      
+      # assign color based on the score 
+      df <- df|>
+        dplyr::mutate(rank = case_when(
+          score <= 25 ~ "Urgent Priority",
+          score > 25 & score <= 50 ~ "High Priority", 
+          score > 50 & score <= 75 ~"Medium Priority",
+          score > 75 ~ "Low Priority"
+        ), 
+        colors = case_when(
+          rank == "Urgent Priority" ~ "#ffb4b3",
+          rank ==  "High Priority" ~ "#ffd380",
+          rank == "Medium Priority"~ "#ffff80",
+          rank == "Low Priority" ~ "#a8d2a8"
+        )
+      )
+      # generate a plotly figure 
+      fig <- plot_ly(
+        data = df, 
+        x = ~class,
+        y = ~score,
+        marker = list(color = c(df$colors)),
+        type = "bar"
+      )|>
+        layout(title = "Least Used Features",
+              xaxis = list(title = ""),
+              yaxis = list(title = ""))
+    # print figure 
+      fig
+    }
+  )
+  output$gapAnalysisResults <- renderPlotly(gapAnalysisResultsFigure())
+
+# poorly ordered renders --------------------------------------------------
   output$map1 <- leaflet::renderLeaflet(map1)
   output$mapTableGBIF <- renderDT(gbifData())
   output$mapTableUpload <- renderDT(dataUpload())
