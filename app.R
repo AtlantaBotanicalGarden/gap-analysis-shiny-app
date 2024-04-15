@@ -20,6 +20,7 @@ library(rgbif)
 library(stringr)
 library(shinycssloaders)
 library(plotly)
+library(sf)
 # source modules --------------------------------------------------------
 lapply(list.files(
   path = "modules/",
@@ -42,8 +43,9 @@ gbifBackbone <- read_csv("appData/gbifBackBone.csv")
 JSONdata <- fromJSON('appData/data_validation.json')
 valid_data_structure <- JSONdata[[1]]
 
-# tempTable <- allData |>
-#   dplyr::filter(taxon=="Magnolia fraseri")
+tempTable <- read.csv("dataToPreProcess/Magnolia_acuminata_data.csv")|>
+  sf::st_as_sf(coords = c("longitude","latitude"), crs = 4326, remove = FALSE)
+  
 
 # 
 # move this to a function !!!
@@ -57,7 +59,19 @@ map1 <- leaflet::leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16))|>
   )
 # 
 map2 <- leaflet::leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16))|>
-  addTiles()
+  addTiles()|>
+  addMapPane("points", zIndex = 420) |>
+  addMapPane("buffers", zIndex = 410)|>
+  addMapPane("gaps", zIndex = 405) |> # shown below ames_circles%>% # shown below ames_circles
+  addLayersControl( 
+    position = "topleft",
+    overlayGroups = c("Reference Records",
+                      "Germplasm Records",
+                      "Buffers",
+                      "GRS gaps",
+                      "ERS gaps"),
+    options = layersControlOptions(collapsed = FALSE))|>
+  leaflet::hideGroup(c("GRS gaps", "ERS gaps"))
 # |> 
   # layer control groups should not be set at the map proxy level as they will overwrite the existing element.
   # addLayersControl( 
@@ -234,7 +248,10 @@ ui <- fluidPage(
           ),
           accordion_panel(
             "Select Buffer Size",
-            selectInput("bufferSize", "Select Buffer Distances in KM", choices = c("1", "5", "10","20","50"), selected = "50")
+            selectInput("bufferSize",
+                        "Select Buffer Distances in KM",
+                        choices = c(1, 5, 10,20,50),
+                        selected = 50)
           ),
           accordion_panel(
             "Run Gap Analysis",
@@ -697,6 +714,7 @@ server <- function(input, output) {
           data = hGap,
           color = ~color,
           stroke = TRUE,
+          radius = 5,
           fillOpacity = 0.9,
           popup = ~popup,
           group = "Reference Records"
@@ -715,10 +733,13 @@ server <- function(input, output) {
       # update the map 
       leafletProxy("map2")|>
         setView(lng = mean(gapPoints()$longitude), lat = mean(gapPoints()$latitude), zoom = 6)|>
+        clearGroup("Reference Records")|>
+        clearGroup("Germplasm Records")|>
         addCircleMarkers(
           data = hGap,
           color = ~color,
-          stroke = TRUE,
+          stroke = FALSE,
+          radius = 5,
           fillOpacity = 0.9,
           popup = ~popup,
           group = "Reference Records"
@@ -726,10 +747,11 @@ server <- function(input, output) {
         addCircleMarkers(
           data = gGap,
           color = ~color,
-          stroke = TRUE,
+          stroke = FALSE,
+          radius = 5,
           fillOpacity = 0.9,
           popup = ~popup,
-          group = "Germplasma Records"
+          group = "Germplasm Records"
         ) |>
         # single legend for the GBIF features
         addLegend(
@@ -746,9 +768,9 @@ server <- function(input, output) {
           layerId = "germplasmalegend",
           colors = c("#6300f0"),
           labels = c("G"),
-          title = "Germplasma Records",
+          title = "Germplasm Records",
           opacity = 1,
-          group = "Germplasma Records"
+          group = "Germplasm Records"
         ) 
     }
 
@@ -756,7 +778,8 @@ server <- function(input, output) {
 
   # Gap analysis method  ----------------------------------------------------
   ## calculate the SRSex -- number of G points / total number of points 
-  ## buffer the points 
+  ##buffer the points 
+  ## display the buffered objects on the map
   ## calculate the GRSex -- total G buffer area / total area 
   ## calculate the ERSex -- total number of ecorgions within the g buffer / total number of eco regions 
   ## display data on a chart 
@@ -774,26 +797,105 @@ server <- function(input, output) {
 
   
   ## buffer points -----------------------------------------------------------
-  buffers <- eventReactive( input$runGapAnalysis, {
-    # produce buffers 
-    bufferObjects <- gapPoints()|>
+  pointsBuffer <- eventReactive(input$runGapAnalysis, {
+    gapPoints()|>
       terra::vect()|>
-      terra::buffer(width = inputsbufferSize)
+      terra::buffer(width = as.numeric(input$bufferSize) * 1000)
+    })
+
+  ## buffers to map ----------------------------------------------------------
+  observeEvent(input$runGapAnalysis, {
+    gGapBuffer <- pointsBuffer()|>
+      sf::st_as_sf()|>
+      dplyr::filter(type == "G")
+    
+    hGapBuffer <- pointsBuffer()|>
+      sf::st_as_sf()|>
+      dplyr::filter(type == "H")
+    # pull points for an sf condition statement
+    gGap <- gapPoints() |>
+      dplyr::filter(type == "G")
+    # gapAreas <- hGapBuffer - gGapBuffer
+    if(nrow(gGap)==0){
+      # update the map 
+      leafletProxy("map2")|>        
+        clearGroup("Buffers")|>
+        addPolygons(
+          data = hGapBuffer,
+          group = "Buffers",
+          color = "blue",
+          fillOpacity = 0.9
+        )|>
+        # single legend for the GBIF features
+        addLegend(
+          position = "topright",
+          colors = c("blue"),
+          labels = c("H"),
+          title = "Buffers",
+          opacity = 1,
+          group = "Buffers"
+        )
+    }else{
+      # update the map 
+      leafletProxy("map2")|>
+        clearGroup("Buffers")|>
+        addPolygons(
+          data = hGapBuffer,
+          group = "Buffers",
+          color = "blue",
+          fillOpacity = 0.9
+        )|>
+        addPolygons(
+          data = gGapBuffer,
+          group = "Buffers",
+          color = "purple",
+          fillOpacity = 0.9
+        )|>
+        # legend
+        addLegend(
+          position = "topright",
+          colors = c("blue", "purple"),
+          labels = c("Reference", "Germplasm"),
+          title = "Buffers",
+          opacity = 1,
+          group = "Buffers"
+        )
+      # |>
+        # single legend for the GBIF features
+        # addLegend(
+        #   position = "topright",
+        #   colors = c("purple"),
+        #   labels = c("G"),
+        #   title = "Germplasm Records",
+        #   opacity = 1,
+        #   group = "G Buffers"
+        # )
+    }
+  })
+  
+
+  ## GRSex  ------------------------------------------------------------------
+  grsex <- eventReactive(input$runGapAnalysis, {
+    # produce buffers 
+    # bufferObjects <- gapPoints()|>
+    #   terra::vect()|>
+    #   terra::buffer(width = as.numeric(input$bufferSize) * 1000)
     # Gather the area for the features 
-    total <-  bufferObjects |>
-      terra::aggregate()|>
+    aggregateBuffers <-  pointsBuffer() |>
+      terra::aggregate()
+    # total area
+    totalArea <- aggregateBuffers |>
       terra::expanse(unit="km")
-    # split out G and H and dissolve
-    ## G
-    gVals <- bufferObjects[bufferObjects$type == "G", ]
-    gArea <- gVals |> 
-      terra::aggregate()|>
+    # split out Gand dissolve
+    gVals <- pointsBuffer()[pointsBuffer()$type == "G", ]|>
+      terra::aggregate()
+    # subtract G from the total 
+    gapBuffers <- aggregateBuffers - gVals
+    # calculate new area 
+    gapArea <- gapBuffers |>
       terra::expanse(unit="km")
-    ## H 
-    hVals <- bufferObjects[bufferObjects$type == "H", ]
-    hArea <- gVals |> 
-      terra::aggregate()|>
-      terra::expanse(unit="km")
+    #calculate GRSex score 
+    grsScore <- (gapArea/totalArea)*100
     
     })
   # gapAnalysisInput <- eventReactive(input$compileDatasets, {
@@ -830,7 +932,7 @@ server <- function(input, output) {
       # assign values based on the presence of specific output values 
       df$score[1] <- try(srsex())
       df$score[2] <- 51 # try(ersex())
-      df$score[3] <- 89 # try(grsex())
+      df$score[3] <- try(grsex())
       # assign the fcsex score 
       df$score[4] <- try(mean(df[1:3, "score"], na.rm = TRUE))
       
@@ -849,6 +951,13 @@ server <- function(input, output) {
           rank == "Low Priority" ~ "#a8d2a8"
         )
       )
+      #define the display order of the plot
+      xform <- list(categoryorder = "array",
+                    categoryarray = c("Sampling Representativeness Score",
+                                      "Ecological Representativeness Score",
+                                      "Geographic Representativeness Score", 
+                                      "Final Representativeness Score"))
+      
       # generate a plotly figure 
       fig <- plot_ly(
         data = df, 
@@ -857,8 +966,8 @@ server <- function(input, output) {
         marker = list(color = c(df$colors)),
         type = "bar"
       )|>
-        layout(title = "Least Used Features",
-              xaxis = list(title = ""),
+        layout(title = "Gap Analysis Ex Situ Conservation Summary",
+              xaxis = xform,
               yaxis = list(title = ""))
     # print figure 
       fig
