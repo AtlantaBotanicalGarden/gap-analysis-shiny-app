@@ -901,7 +901,8 @@ server <- function(input, output) {
     gapArea <- gapBuffers |>
       terra::expanse(unit="km")
     #calculate GRSex score 
-    grsScore <- (gapArea/totalArea)*100    
+    grsScore <- (gapArea/totalArea)*100   
+    grsScore
     })
   # gapAnalysisInput <- eventReactive(input$compileDatasets, {
   #   mapData <- data.frame(matrix(nrow = 1, ncol = length(expectedNames)+1))
@@ -925,8 +926,8 @@ server <- function(input, output) {
   ## ERSex -------------------------------------------------------------------
   ersex <- eventReactive(input$runGapAnalysis, {
     # produce buffers 
-    bufferObjects <- tempTable|>
-    terra::vect()|>
+    bufferObjects <- pointsBuffer()|>
+    # terra::vect()|>
     terra::buffer(width = 1000)
     # Gather the area for the features 
     aggregateBuffers <-  bufferObjects |>
@@ -936,7 +937,10 @@ server <- function(input, output) {
     eco1 <- ecoRegions |>
       terra::crop(aggregateBuffers)
     allEco <- unique(eco1$ECO_ID)
-  
+    # all ecoregions in the areas 
+    fullEco <- ecoRegions |>
+      tidyterra::filter(ECO_ID %in% allEco)
+      
     # split out Gand dissolve
     gVals <- bufferObjects |>
       tidyterra::filter(type == "G")|>
@@ -945,7 +949,10 @@ server <- function(input, output) {
     eco2 <- eco1|>
       terra::crop(gVals)
     gEco <- unique(eco2$ECO_ID)
-  
+    # all ecoregions in the areas 
+    gapEco <- ecoRegions |>
+      tidyterra::filter(ECO_ID %in% gEco)
+    
     #calculate ersex score 
     ersScore <- (length(gEco)/length(allEco))*100
     ersScore
