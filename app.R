@@ -21,6 +21,7 @@ library(stringr)
 library(shinycssloaders)
 library(plotly)
 library(sf)
+library(tidyterra)
 # source modules --------------------------------------------------------
 lapply(list.files(
   path = "modules/",
@@ -37,7 +38,7 @@ lapply(list.files(
 
 # global variables -----------------------------------------
 gbifBackbone <- read_csv("appData/gbifBackBone.csv")
-
+ecoRegions <- terra::vect("appData/official/wwf_terr_ecos.shp")
 # column name structure 
 ## use this once we have the file 
 JSONdata <- fromJSON('appData/data_validation.json')
@@ -820,6 +821,7 @@ server <- function(input, output) {
       # update the map 
       leafletProxy("map2")|>        
         clearGroup("Buffers")|>
+        # clearControls("bufferLegend")|>
         addPolygons(
           data = hGapBuffer,
           group = "Buffers",
@@ -829,6 +831,7 @@ server <- function(input, output) {
         # single legend for the GBIF features
         addLegend(
           position = "topright",
+          layerId = "bufferLegend",
           colors = c("blue"),
           labels = c("H"),
           title = "Buffers",
@@ -839,6 +842,7 @@ server <- function(input, output) {
       # update the map 
       leafletProxy("map2")|>
         clearGroup("Buffers")|>
+        # clearControls("bufferLegend")|>
         addPolygons(
           data = hGapBuffer,
           group = "Buffers",
@@ -854,6 +858,7 @@ server <- function(input, output) {
         # legend
         addLegend(
           position = "topright",
+          layerId = "bufferLegend",
           colors = c("blue", "purple"),
           labels = c("Reference", "Germplasm"),
           title = "Buffers",
@@ -887,7 +892,8 @@ server <- function(input, output) {
     totalArea <- aggregateBuffers |>
       terra::expanse(unit="km")
     # split out Gand dissolve
-    gVals <- pointsBuffer()[pointsBuffer()$type == "G", ]|>
+    gVals <- pointsBuffer()|>
+      tidyterra::filter(type == "G")|>
       terra::aggregate()
     # subtract G from the total 
     gapBuffers <- aggregateBuffers - gVals
@@ -895,8 +901,7 @@ server <- function(input, output) {
     gapArea <- gapBuffers |>
       terra::expanse(unit="km")
     #calculate GRSex score 
-    grsScore <- (gapArea/totalArea)*100
-    
+    grsScore <- (gapArea/totalArea)*100    
     })
   # gapAnalysisInput <- eventReactive(input$compileDatasets, {
   #   mapData <- data.frame(matrix(nrow = 1, ncol = length(expectedNames)+1))
@@ -916,6 +921,35 @@ server <- function(input, output) {
   #   }
   #   mapData2
   # })
+
+  ## ERSex -------------------------------------------------------------------
+  ersex <- eventReactive(input$runGapAnalysis, {
+    # produce buffers 
+    bufferObjects <- tempTable|>
+    terra::vect()|>
+    terra::buffer(width = 1000)
+    # Gather the area for the features 
+    aggregateBuffers <-  bufferObjects |>
+      terra::aggregate()
+  
+    # crop the ecoregions to full buffer object 
+    eco1 <- ecoRegions |>
+      terra::crop(aggregateBuffers)
+    allEco <- unique(eco1$ECO_ID)
+  
+    # split out Gand dissolve
+    gVals <- bufferObjects |>
+      tidyterra::filter(type == "G")|>
+      terra::aggregate()
+    # crop the ecoregions to g buffers 
+    eco2 <- eco1|>
+      terra::crop(gVals)
+    gEco <- unique(eco2$ECO_ID)
+  
+    #calculate ersex score 
+    ersScore <- (length(gEco)/length(allEco))*100
+    ersScore
+  })
   
 
   ## render gap analysis plot ------------------------------------------------
@@ -931,7 +965,7 @@ server <- function(input, output) {
       score = c(0,0,0,0))
       # assign values based on the presence of specific output values 
       df$score[1] <- try(srsex())
-      df$score[2] <- 51 # try(ersex())
+      df$score[2] <- try(ersex())
       df$score[3] <- try(grsex())
       # assign the fcsex score 
       df$score[4] <- try(mean(df[1:3, "score"], na.rm = TRUE))
@@ -968,7 +1002,9 @@ server <- function(input, output) {
       )|>
         layout(title = "Gap Analysis Ex Situ Conservation Summary",
               xaxis = xform,
-              yaxis = list(title = ""))
+              yaxis = list(title = "", 
+                           range = c(0,100))
+              )
     # print figure 
       fig
     }
