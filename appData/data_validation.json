@@ -1,16 +1,14 @@
 {
     "GBIFDataMapping": [
         {
-            "UID": "identificationID",
-            "taxon": "scientificName",
-            "genus": "genus",
-            "species": "specificEpithet",
-            "type": "basisOfRecord",
-            "year": "year",
-            "latitude": "decimalLatitude",
-            "longitude": "decimalLongitude",
-            "locality": "verbatimLocality",
-            "collector": "recordedBy",
+            "Accession Number": "identificationID",
+            "Taxon Name": "scientificName",
+            "Current Germplasm Type": "basisOfRecord",
+            "Collection Date": "year",
+            "Latitude": "decimalLatitude",
+            "Longitude": "decimalLongitude",
+            "Locality": "verbatimLocality",
+            "Collector": "recordedBy",
             "issues": "issues"
         }
     ]

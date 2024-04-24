@@ -20,13 +20,13 @@ query_gbif_occ <- function(taxonkey, allow_synonyms_bool = TRUE, issues_not_allo
                             hasCoordinate = TRUE,
                             hasGeospatialIssue = FALSE,
                             basisOfRecord = "LIVING_SPECIMEN",
-                            limit = 500
+                            limit = 200
                             )
   # Set the total number to be less then or equal to 500
   if(is.null(nrow(gbif_response1$data))){
-    pull <- 500
+    pull <- 200
   }else{
-    pull <- 500 - nrow(gbif_response1$data)
+    pull <- 200 - nrow(gbif_response1$data)
   }
   # call H points with the amount 
   gbif_response2 <- rgbif::occ_data(taxonKey = taxonkey,

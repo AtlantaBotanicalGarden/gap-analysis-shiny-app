@@ -5,9 +5,10 @@ account: carverd
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 11504183
-bundleId: 8377788
+bundleId: 8537872
 url: https://carverd.shinyapps.io/gap-analysis-shiny-app/
-when: 1710544671.80572
-lastSyncTime: 1710544671.80572
+when: 1713994766.34295
+lastSyncTime: 1713994766.34296
 asMultiple: FALSE
 asStatic: FALSE
+ignoredFiles: preprocessingFunctions/filterGBIFTaxonomy.R|preprocessingFunctions/grabDataFromGoogleDrive.R|preprocessingFunctions/simplfyTheEcoregions.R|preprocessingFunctions/Untitled|www/abg_gapAnalysis.drawio
