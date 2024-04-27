@@ -46,10 +46,18 @@ ecoRegions <- terra::vect("appData/ecoregionsSimplified.gpkg")
 JSONdata <- fromJSON('appData/data_validation.json')
 valid_data_structure <- JSONdata[[1]]
 
-# tempTable <- read.csv("dataToPreProcess/Magnolia_acuminata_data.csv")|>
-#   sf::st_as_sf(coords = c("Longitude","Latitude"), crs = 4326, remove = FALSE)
-   
 
+expectedNames <- c("Accession Number",	"Taxon Name",	"Current Germplasm Type",	"Collection Date",
+                   "Latitude",	"Longitude",	"Locality",	"Collector")
+tempTable <- read.csv("dataToPreProcess/Magnolia_acuminata_data.csv")|>
+  dplyr::select(-c("genus","species", "issues"))|>
+  sf::st_as_sf(coords = c("longitude","latitude"), crs = 4326, remove = FALSE)
+
+names(tempTable) <- c(expectedNames ,"geometry")
+
+
+
+names(tempTable) <- expectedNames
 # 
 # move this to a function !!!
 map1 <- leaflet::leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16))|>
@@ -73,11 +81,11 @@ map2 <- leaflet::leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16))|>
                       "Buffers",
                       "GRS gaps",
                       "ERS gaps"),
-    options = layersControlOptions(collapsed = FALSE))|>
-  leaflet::hideGroup(c("GRS gaps", "ERS gaps"))
+    options = layersControlOptions(collapsed = FALSE))
+# |>
+#   leaflet::hideGroup(c("GRS gaps", "ERS gaps"))
 
-expectedNames <- c("Accession Number",	"Taxon Name",	"Current Germplasm Type",	"Collection Date",
-                   "Latitude",	"Longitude",	"Locality",	"Collector")
+
 
 
 
@@ -242,7 +250,11 @@ ui <- fluidPage(
           ),
           accordion_panel(
             "Run Gap Analysis",
-            actionButton("runGapAnalysis", "Generate Results")
+            actionButton("createBuffersGap", "1. Create Buffers"),
+            tags$br(),
+            actionButton("generateGapMaps", "2. Create Gap Maps Layers"),
+            tags$br(),
+            actionButton("generateGapSummary", "3. Generate Summary Figure")
           ),
           accordion_panel(
             "Export Map",
@@ -644,6 +656,14 @@ server <- function(input, output) {
   })
   
   # compile dataset for the gap analysis page  ------------------------------
+  ## popup to show that the compile dataset is working. ----
+  observeEvent(input$compileDatasets, {
+    # Show a modal when the button is pressed
+    shinyalert(title = "Data is Moving",
+               text = "Data is being gather and organized. Please continue your evaluation on the Gap Analysis page.",
+               type = "success")
+  })
+  ## generate the gapAnalysus input dataset ----
   gapAnalysisInput <- reactive({
     d1 <- NA
     d2 <- NA
@@ -675,7 +695,7 @@ server <- function(input, output) {
   # intial map on gap analysis page -----------------------------------------
   
   gapPoints <-  reactive({
-    req(input$compileDatasets)
+    # req(input$compileDatasets) ### transistion from using this as the que to sequentail outputs. 
     gapAnalysisInput()|>
       sf::st_as_sf(coords = c("Longitude","Latitude"), crs = 4326, remove = FALSE)|>
       dplyr::mutate(
@@ -690,22 +710,9 @@ server <- function(input, output) {
         )
       )
   })
-    
+  ## add points to map ---
   observeEvent(input$addGapPoints, {
     # # generate spatial object 
-    # gapPoints <- gapAnalysisInput()|>
-    #   sf::st_as_sf(coords = c("Longitude","Latitude"), crs = 4326, remove = FALSE)|>
-    #   dplyr::mutate(
-    #     popup = paste0("<strong>", as.character(`Taxon Name`),"</strong>", # needs to be text
-    #                    "<br/><strong> Type: </strong>", `Current Germplasm Type`,
-    #                    "<br/><b>Collector Name:</b> ", collector,
-    #                    "<br/><b>Locality Description):</b> ", Locality,
-    #                    "<br/><b>Data Source:</b> ", source),
-    #     color = case_when(
-    #       `Current Germplasm Type` == "H" ~ "#1184d4",
-    #       `Current Germplasm Type` == "G" ~ "#6300f0"
-    #     )
-    #   )
     # spilt out the G and H points 
     gGap <- gapPoints() |>
       dplyr::filter(`Current Germplasm Type` == "G")
@@ -789,131 +796,66 @@ server <- function(input, output) {
   ## calculate the ERSex -- total number of ecorgions within the g buffer / total number of eco regions 
   ## display data on a chart 
   
-  ## popup to show that the compile dataset is working. 
-  observeEvent(input$compileDatasets, {
-    # Show a modal when the button is pressed
-    shinyalert(title = "Data is Moving",
-               text = "Data is being gather and organized. Please continue your evaluation on the Gap Analysis page.",
-               type = "success")
-  })
-  
-  ## srs ex ------------------------------------------------------------------
-  srsex <- eventReactive(input$compileDatasets, {
-    gGap <- gapPoints() |>
-      dplyr::filter(`Current Germplasm Type` == "G")
-    srsScore <- (nrow(gGap)/ nrow(gapPoints()))*100
-    srsScore
-  })
 
 
-  
+
+  ## createBuffersGap --- 
   ## buffer points -----------------------------------------------------------
-  pointsBuffer <- eventReactive(input$runGapAnalysis, {
+  pointsBuffer <- eventReactive(input$createBuffersGap, {
     gapPoints()|>
       terra::vect()|>
       terra::buffer(width = as.numeric(input$bufferSize) * 1000)
     })
-
-  ## gap analysis data to the map ----------------------------------------------------------
-  observeEvent(input$runGapAnalysis, {
+  # aggregate buffers 
+  aggregateBuffers <-  eventReactive(input$createBuffersGap, {
+    pointsBuffer() |>
+      terra::aggregate()
+    })
+  
+  # g buffer object 
+  ## sf objects because they are being added to the map 
+  gGapBuffer <- eventReactive(input$createBuffersGap, {
     # g points 
-    gGapBuffer <- pointsBuffer()|>
+    pointsBuffer()|>
       sf::st_as_sf()|>
       dplyr::filter(`Current Germplasm Type` == "G")
-    # h points
-    hGapBuffer <- pointsBuffer()|>
+  })
+  # h buffer object
+  ## sf objects because they are being added to the map 
+  hGapBuffer <- eventReactive(input$createBuffersGap, {
+    pointsBuffer()|>
       sf::st_as_sf()|>
       dplyr::filter(`Current Germplasm Type` == "H")
-    # ersmap 
-    ersMap <- ersexGap()
-    grsMap <- grsexGap()
-    # pull points for an sf condition statement
-    gGap <- gapPoints() |>
-      dplyr::filter(`Current Germplasm Type` == "G")
-    # gapAreas <- hGapBuffer - gGapBuffer
-    if(nrow(gGap)==0){
+    })
+  
+  ### update map with buffer features --- 
+  observeEvent(input$createBuffersGap, {
+    # aggregate buffer object to reduce complexity 
+    hbuf <- hGapBuffer() |> 
+      terra::vect() |>
+      terra::aggregate()|>
+      st_as_sf()
+    gbuf <- gGapBuffer() |> 
+      terra::vect() |>
+      terra::aggregate()|>
+      st_as_sf()
+    
+    
+    if(nrow(gbuf)!=0){
       # update the map 
       leafletProxy("map2")|>        
         clearGroup("Buffers")|>
-        clearGroup("ERS gaps")|>
-        clearGroup("GRS gaps")|>
         removeControl(layerId = "bufferLegend") |>
         addPolygons(
-          data = hGapBuffer,
+          data = hbuf,
           group = "Buffers",
           color = "blue",
-          fillOpacity = 0.9
-        )|>
-        # ers gap map layer
+          fillOpacity = 0.9) |>
         addPolygons(
-          data = ersMap,
-          color = "grey",
-          opacity = 0.4,
-          popup = ~ECO_NAME, 
-          group = "ERS gaps",
-          fillOpacity = 0.9
-        ) |>
-        # grsex gap layer 
-        addPolygons(
-          data = grsMap,
-          color = "grey",
-          opacity = 0.2, 
-          group = "GRS gaps",
-          fillOpacity = 0.4) |>
-        # single legend for the GBIF features
-        addLegend(
-          position = "topright",
-          layerId = "bufferLegend",
-          colors = c("blue"),
-          labels = c("H"),
-          title = "Buffers",
-          opacity = 1,
-          group = "Buffers"
-        )
-    }else{
-      # update the map 
-      leafletProxy("map2")|>
-        clearGroup("Buffers")|>
-        clearGroup("ERS gaps")|>
-        clearGroup("GRS gaps")|>
-        removeControl(layerId = "bufferLegend") |>
-        removeControl(layerId = "ersGapLegend") |>
-        addPolygons(
-          data = hGapBuffer,
-          group = "Buffers",
-          color = "blue",
-          fillOpacity = 0.9
-        )|>
-        addPolygons(
-          data = gGapBuffer,
+          data = gbuf,
           group = "Buffers",
           color = "purple",
-          fillOpacity = 0.9
-        )|>
-        # ers gap map layer
-        addPolygons(
-          data = ersMap,
-          color = "grey",
-          opacity = 0.4,
-          popup = ~ECO_NAME, 
-          group = "ERS gaps",
-          fillOpacity = 0.4,
-          highlight = highlightOptions(
-            weight = 3,
-            fillOpacity = 0.4,
-            color = "black",
-            fillColor = "yellow",
-            opacity = 0.4,
-            bringToFront = TRUE,
-            sendToBack = TRUE),)|>
-        # grs gap map layer
-        addPolygons(
-          data = grsMap,
-          color = "grey",
-          opacity = 0.4, 
-          group = "GRS gaps",
-          fillOpacity = 0.8) |>
-        # legend
+          fillOpacity = 0.9)|>
         addLegend(
           position = "topright",
           layerId = "bufferLegend",
@@ -921,150 +863,323 @@ server <- function(input, output) {
           labels = c("Reference", "Germplasm"),
           title = "Buffers",
           opacity = 1,
-          group = "Buffers"
-        )|>
+          group = "Buffers")
+    }else{
+      leafletProxy("map2")|>        
+        clearGroup("Buffers")|>
+        removeControl(layerId = "bufferLegend") |>
+        addPolygons(
+          data = hbuf,
+          group = "Buffers",
+          color = "blue",
+          fillOpacity = 0.9) |>
         addLegend(
           position = "topright",
-          layerId = "ersGapLegend",
-          labels = c("Uncollected Ecoregions"),
-          title = "ERSex Gap",
-          colors = c("grey"),
+          layerId = "bufferLegend",
+          colors = c("blue"),
+          labels = c("Reference"),
+          title = "Buffers",
           opacity = 1,
-          group = "ERS gaps"
-        )
-      # |>
-        # single legend for the GBIF features
-        # addLegend(
-        #   position = "topright",
-        #   colors = c("purple"),
-        #   labels = c("G"),
-        #   title = "Germplasm Records",
-        #   opacity = 1,
-        #   group = "G Buffers"
-        # )
+          group = "Buffers")
     }
   })
   
+  
+  
+  ## trimed ecoregion ---
+  # crop the ecoregions to full buffer object
+  allEcos <-  eventReactive(input$generateGapMaps, {
+    ecoRegions |>
+      terra::crop(aggregateBuffers())
+  })
+  # g area ecoregions 
+  gEcos <- eventReactive(input$generateGapMaps, {
+    if(nrow(gGapBuffer())>0){
+      gVals <- terra::vect(gGapBuffer())|>
+        terra::aggregate()
+      # crop to g buffers 
+      gEco <- allEcos() |>
+        terra::crop(gVals)
+    }else{
+      gEco <- allEcos()[0,]
+      }
+    gEco
+  })
 
-  ## GRSex  ------------------------------------------------------------------
-  ### score
-  grsex <- eventReactive(input$runGapAnalysis, {
-    # produce buffers 
-    # bufferObjects <- gapPoints()|>
-    #   terra::vect()|>
-    #   terra::buffer(width = as.numeric(input$bufferSize) * 1000)
-    # Gather the area for the features 
-    aggregateBuffers <-  pointsBuffer() |>
-      terra::aggregate()
-    # total area
-    totalArea <- aggregateBuffers |>
-      terra::expanse(unit="km")
-    # split out Gand dissolve
-    gVals <- pointsBuffer()|>
-      tidyterra::filter(`Current Germplasm Type` == "G")|>
-      terra::aggregate()
-    # subtract G from the total 
-    gapBuffers <- aggregateBuffers - gVals
-    # calculate new area 
-    gapArea <- gapBuffers |>
-      terra::expanse(unit="km")
-    #calculate GRSex score 
-    grsScore <- (gapArea/totalArea)*100   
-    grsScore
-    })
-  ### gap map 
-  grsexGap <- eventReactive(input$runGapAnalysis, {
-    # Gather the area for the features 
-    aggregateBuffers <-  pointsBuffer() |>
-      terra::aggregate()
-    # split out Gand dissolve
-    gVals <- pointsBuffer()|>
-      tidyterra::filter(`Current Germplasm Type` == "G")|>
-      terra::aggregate()
-    # subtract G from the total 
-    gapBuffers <- aggregateBuffers - gVals
-    gapBuffers |> st_as_sf()
+  ## generete gap maps -------------------------------------------------------
+  
+  ## ers gap Map ----  
+  ## return SF object because it's on the map 
+  ersexGap <- eventReactive(input$generateGapMaps, {
+    # get a unique list of values from eco buffers 
+    allEco1 <- unique(allEcos()$ECO_ID)
+    gEco1 <- unique(gEcos()$ECO_ID)
+    
+    # select ecos not in gEcos
+    gEco1 <- allEco1[!allEco1 %in% gEco1]
+    
+    # select eco not in the gEcoLayer 
+    gapEcos <- ecoRegions |>
+      tidyterra::filter(ECO_ID %in% gEco1)
+    # spatail object showing the ecoregions outside of the 
+    gapEcos |> st_as_sf()
   })
   
-  ## ERSex -------------------------------------------------------------------
-  ### score 
-  ersex <- eventReactive(input$runGapAnalysis, {
-    # produce buffers 
-    # bufferObjects <- pointsBuffer()|>
-    # terra::vect()|>
-    # terra::buffer(width = 1000)
-    # Gather the area for the features 
-    aggregateBuffers <-  pointsBuffer() |>
+  ## gap map ---  
+  grsexGap <- eventReactive(input$generateGapMaps, {
+    # format the buffer feature
+    gGapBuffer1 <-  terra::vect(gGapBuffer()) |>
       terra::aggregate()
-  
-    # crop the ecoregions to full buffer object 
-    eco1 <- ecoRegions |>
-      terra::crop(aggregateBuffers)
-    allEco <- unique(eco1$ECO_ID)
-    # all ecoregions in the areas 
-    fullEco <- ecoRegions |>
-      tidyterra::filter(ECO_ID %in% allEco)
-      
-    # split out Gand dissolve
-    gVals <- pointsBuffer()  |>
-      tidyterra::filter(`Current Germplasm Type` == "G")|>
-      terra::aggregate()
-    # crop the ecoregions to g buffers 
-    eco2 <- eco1|>
-      terra::crop(gVals)
-    gEco <- unique(eco2$ECO_ID)
-    # all ecoregions in the areas 
-    gapEco <- ecoRegions |>
-      tidyterra::filter(ECO_ID %in% gEco)
-    
-    #calculate ersex score 
-    ersScore <- (length(gEco)/length(allEco))*100
-    ersScore
-  })
-  ### gapMap
-  ersexGap <- eventReactive(input$runGapAnalysis, {
+    # difference 
+    gapBuffers2 <- aggregateBuffers() - gGapBuffer1
+    # set to sf for display on map 
+    gapBuffers2 |> st_as_sf()
 
-    # Gather the area for the features
-    aggregateBuffers <-  pointsBuffer() |>
-      terra::aggregate()
-    # crop the ecoregions to full buffer object
-    eco1 <- ecoRegions |>
-      terra::crop(aggregateBuffers)
-    # all the ids of ecoregions in the area 
-    allEco <- unique(eco1$ECO_ID)
-    
-    # filter the ecoregion object all ecoregions in the areas
-    fullEco <- ecoRegions |>
-      tidyterra::filter(ECO_ID %in% allEco)
-    
-    # split out Gand dissolve
-    gVals <- pointsBuffer()  |>
-      tidyterra::filter(`Current Germplasm Type` == "G")|>
-      terra::aggregate()
-    # crop the ecoregions to g buffers
-    eco2 <- eco1|>
-      terra::crop(gVals)
-    gEco <- unique(eco2$ECO_ID)
-    # all ecoregions in the areas
-    gapEco <- ecoRegions |>
-      tidyterra::filter(ECO_ID %in% gEco)
-    
-    # subset the features not in
-    mapEcos <- allEco[!allEco %in% gEco]
-    
-    #calculate ersex score
-    ersGap <- ecoRegions |>
-      tidyterra::filter(ECO_ID %in% mapEcos) |>
-      sf::st_as_sf()
-    ersGap
   })
 
+
+  ## gap analysis data to the map ----------------------------------------------------------
+  ### update map with gap map features --- 
+  observeEvent(input$generateGapMaps, {
+        # update the map
+        leafletProxy("map2")|>
+          clearGroup("ERS gaps")|>
+          clearGroup("GRS gaps")|>
+          removeControl(layerId = "ersGapLegend") |>
+          removeControl(layerId = "bufferLegend") |>
+          # ers gap map layer
+          addPolygons(
+            data = ersexGap(),
+            color = "grey",
+            opacity = 0,
+            popup = ~ECO_NAME,
+            group = "ERS gaps",
+            fillOpacity = 0.9,
+            highlight = highlightOptions(
+                        weight = 3,
+                        fillOpacity = 0.4,
+                        color = "black",
+                        fillColor = "yellow",
+                        opacity = 0.4,
+                        bringToFront = TRUE,
+                        sendToBack = TRUE)
+          ) |>
+          # grsex gap layer
+          addPolygons(
+            data = grsexGap(),
+            color = "#d8b365",
+            opacity = 0.2,
+            group = "GRS gaps",
+            fillOpacity = 0.4)|>
+      addLegend(
+            position = "topright",
+            layerId = "ersGapLegend",
+            labels = c("Uncollected Ecoregions"),
+            title = "ERSex Gap",
+            colors = c("grey"),
+            opacity = 1,
+            group = "ERS gaps"
+          )|>
+      addLegend(
+        position = "topright",
+        layerId = "grsGapLegend",
+        labels = c("Areas outside of Gerplasm Buffer Range"),
+        title = "GRSex Gap",
+        colors = c("#d8b365"),
+        opacity = 1,
+        group = "GRS gaps"
+      )
+    #     # |>
+    #       # single legend for the GBIF features
+    #       # addLegend(
+    #       #   position = "topright",
+    #       #   colors = c("purple"),
+    #       #   labels = c("G"),
+    #       #   title = "Germplasm Records",
+    #       #   opacity = 1,
+    #       #   group = "G Buffers"
+    #       # )
+  })
  
   
   
-  ## render gap analysis plot ------------------------------------------------
-    gapAnalysisResultsFigure<- reactive({
-      req(input$runGapAnalysis)
+  # observeEvent(input$createBuffersGap, {
+  #   
+  #   # ersmap 
+  #   ersMap <- ersexGap()
+  #   grsMap <- grsexGap()
+  #   
+  #   
+  #   # pull points for an sf condition statement
+  #   gGap <- gapPoints() |>
+  #     dplyr::filter(`Current Germplasm Type` == "G")
+  #   # gapAreas <- hGapBuffer - gGapBuffer
+  #   if(nrow(gGap)==0){
+  #     # update the map 
+  #     leafletProxy("map2")|>        
+  #       clearGroup("Buffers")|>
+  #       clearGroup("ERS gaps")|>
+  #       clearGroup("GRS gaps")|>
+  #       removeControl(layerId = "bufferLegend") |>
+  #       addPolygons(
+  #         data = hGapBuffer,
+  #         group = "Buffers",
+  #         color = "blue",
+  #         fillOpacity = 0.9
+  #       )|>
+  #       # ers gap map layer
+  #       addPolygons(
+  #         data = ersMap,
+  #         color = "grey",
+  #         opacity = 0.4,
+  #         popup = ~ECO_NAME, 
+  #         group = "ERS gaps",
+  #         fillOpacity = 0.9
+  #       ) |>
+  #       # grsex gap layer 
+  #       addPolygons(
+  #         data = grsMap,
+  #         color = "grey",
+  #         opacity = 0.2, 
+  #         group = "GRS gaps",
+  #         fillOpacity = 0.4) |>
+  #       # single legend for the GBIF features
+  #       addLegend(
+  #         position = "topright",
+  #         layerId = "bufferLegend",
+  #         colors = c("blue"),
+  #         labels = c("H"),
+  #         title = "Buffers",
+  #         opacity = 1,
+  #         group = "Buffers"
+  #       )
+  #   }else{
+  #     # update the map 
+  #     leafletProxy("map2")|>
+  #       clearGroup("Buffers")|>
+  #       clearGroup("ERS gaps")|>
+  #       clearGroup("GRS gaps")|>
+  #       removeControl(layerId = "bufferLegend") |>
+  #       removeControl(layerId = "ersGapLegend") |>
+  #       addPolygons(
+  #         data = hGapBuffer,
+  #         group = "Buffers",
+  #         color = "blue",
+  #         fillOpacity = 0.9
+  #       )|>
+  #       addPolygons(
+  #         data = gGapBuffer,
+  #         group = "Buffers",
+  #         color = "purple",
+  #         fillOpacity = 0.9
+  #       )|>
+  #       # ers gap map layer
+  #       addPolygons(
+  #         data = ersMap,
+  #         color = "grey",
+  #         opacity = 0.4,
+  #         popup = ~ECO_NAME, 
+  #         group = "ERS gaps",
+  #         fillOpacity = 0.4,
+  #         highlight = highlightOptions(
+  #           weight = 3,
+  #           fillOpacity = 0.4,
+  #           color = "black",
+  #           fillColor = "yellow",
+  #           opacity = 0.4,
+  #           bringToFront = TRUE,
+  #           sendToBack = TRUE),)|>
+  #       # grs gap map layer
+  #       addPolygons(
+  #         data = grsMap,
+  #         color = "grey",
+  #         opacity = 0.4, 
+  #         group = "GRS gaps",
+  #         fillOpacity = 0.8) |>
+  #       # legend
+  #       addLegend(
+  #         position = "topright",
+  #         layerId = "bufferLegend",
+  #         colors = c("blue", "purple"),
+  #         labels = c("Reference", "Germplasm"),
+  #         title = "Buffers",
+  #         opacity = 1,
+  #         group = "Buffers"
+  #       )|>
+  #       addLegend(
+  #         position = "topright",
+  #         layerId = "ersGapLegend",
+  #         labels = c("Uncollected Ecoregions"),
+  #         title = "ERSex Gap",
+  #         colors = c("grey"),
+  #         opacity = 1,
+  #         group = "ERS gaps"
+  #       )
+  #     # |>
+  #       # single legend for the GBIF features
+  #       # addLegend(
+  #       #   position = "topright",
+  #       #   colors = c("purple"),
+  #       #   labels = c("G"),
+  #       #   title = "Germplasm Records",
+  #       #   opacity = 1,
+  #       #   group = "G Buffers"
+  #       # )
+  #   }
+  # })
+  
+  
+  ## generateGapSummary --- 
+  ## srs ex ------------------------------------------------------------------
+  srsex <- eventReactive(input$generateGapSummary,{
+    # select g points
+    gGap <- gapPoints() |>
+      dplyr::filter(`Current Germplasm Type` == "G")
+    # calculate score 
+    gs <- nrow(gGap)
+    if(gs == 0){
+      srsScore <- 0
+    }else(
+      srsScore <- (nrow(gGap)/ nrow(gapPoints()))*100
+    )
+    # return score
+    srsScore
+  })
+  ## GRSex  ------------------------------------------------------------------
+  grsex <- eventReactive(input$generateGapSummary, {
+    # total area
+    totalArea <- aggregateBuffers() |>
+      terra::expanse(unit="km")
+    # calculate areas outside of gbuffer 
+    gapArea <- grsexGap()  |>
+      terra::vect() |>
+      terra::expanse(unit="km")
+    #calculate GRSex score 
+    ## total - gap area give the area covered by G buffers. 
+    difference <- totalArea - gapArea
+    if(difference == 0){
+      grsScore <- 0
+    }else{
+      grsScore <- ((totalArea - gapArea)/totalArea)*100   
+    }
+    grsScore
+    
+  })
+  
+  ## ERSex -------------------------------------------------------------------
+  ersex <- eventReactive(input$generateGapSummary, {
+    
+    #calculate ersex score 
+    gs <- nrow(gEcos())
+    if(gs == 0){
+      ersScore <- 0
+    }else(
+      ersScore <- (nrow(gEcos())/nrow(allEcos()))*100
+    )
+    ersScore
+  })
+  ### render gap analysis plot ------------------------------------------------
+    gapAnalysisResultsFigure<- eventReactive(input$generateGapSummary,{
       # define the base table 
       df <- data.frame(class = c(
         "Sampling Representativeness Score",
