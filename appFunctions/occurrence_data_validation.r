@@ -16,7 +16,8 @@ etl_gbif_occ_data <- function(gbif_occurrence_df, valid_data_structure) {
     mutate(`Current Germplasm Type` = case_when(
       `Current Germplasm Type` != "LIVING_SPECIMEN" ~ "H",
       `Current Germplasm Type` == "LIVING_SPECIMEN" ~ "G"
-    ))
+      )
+    )
   
   return(formatted_occurrence_df)
 }

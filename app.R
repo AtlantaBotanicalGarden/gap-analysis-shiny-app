@@ -106,6 +106,12 @@ ui <- fluidPage(
   ),
   includeCSS("www/style.css"),
 
+  ## Banner section ----------------------------------------------------------
+  tags$div(
+    # HTML(tags$span(style="color:red","This application is under active development. If you experience a loss of connection while using the application please refresh your page or try again at a latter time. We apologize for any inconvience."))
+    tags$h6(style="color:red; background-color: #f5e642;    width: 100%;text-align: center; padding:10px ",
+              "This application is under active development. If you experience a loss of connection while using the application please refresh your page or try again at a different time. We apologize for any inconvience.")
+    ),
   ## navbarPage --------------------------------------------------------------
   ### primary container for the application. 
   page_navbar(
@@ -671,10 +677,12 @@ server <- function(input, output) {
     req(input$compileDatasets)
     d1 <- try(gbifData()|>
                 dplyr::mutate(source = "GBIF",
-                              "Accession Number" = as.character(`Accession Number`)))
+                              "Accession Number" = as.character(`Accession Number`),
+                              "Collection Date" = as.character(`Collection Date`)))
     d2 <- try(dataUpload()|>
                 dplyr::mutate(source = "upload",
-                              "Accession Number" = as.character(`Accession Number`)))
+                              "Accession Number" = as.character(`Accession Number`),
+                              "Collection Date" = as.character(`Collection Date`)))
     d3 <- try(dplyr::bind_rows(d1,d2))
     # both datasets 
     if("data.frame" %in% class(d3)){
