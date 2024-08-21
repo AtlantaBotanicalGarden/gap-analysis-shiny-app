@@ -124,282 +124,189 @@ ui <- fluidPage(
     # set some space between the Application title and the tab selectors 
     nav_spacer(),
   ## Data Evaluation ---------------------------------------------------------
-  nav_panel(
-    title = "Data Evaluation",
-      # define row for containing the map feaut
-      # defeine the sidebar element
-      layout_sidebar(
-        height = "700px",
-      # sidebar feature
-        sidebar = sidebar(
-          position = "left",
-          accordion(
-            open = FALSE,
-            accordion_panel(
-              # user selects the geneus 
-              "1. Select Taxon",
-              shiny::selectInput(
-                inputId = "genusSelect",
-                label = "Genus: ",
-                choices = unique(gbifBackbone$genus),
-                selected = "Magnolia"),
-              # list of subspecies is generate for selection 
-              uiOutput("speciesSelect"),
-              # when possible the option for var subsp is listed
-              uiOutput("taxonRank"),
-              # final filter of sub species it provided 
-              uiOutput("speciesInfraspecific"),
-              # print the current taxon name 
-              textOutput("currentSpecies")
-            ),
-            accordion_panel(
-              "2. Download and Display GBIF data ",
-              tags$br(),
-              tags$strong("GBIF Taxon ID:"),  textOutput("gbiftaxonid"),
-              checkboxInput("allowSyn", "Allow Synonyms in Data", TRUE),
-              # p(tags$a(href = "https://docs.google.com/spreadsheets/d/1BeDUBCg2BJ1DYpW47bxYH8p8CJAVqgM5rafyz81RoOc/edit#gid=1735583299", "View GBIF Issue Codes ", target = "_blank")),
-              actionButton("gbifPull", "Download Data from Gbif"),
-              textInput("issueCodes", 
-                        label = tags$a(href = "https://docs.google.com/spreadsheets/d/1BeDUBCg2BJ1DYpW47bxYH8p8CJAVqgM5rafyz81RoOc/edit#gid=1735583299",
-                                       "View GBIF Issue Codes ", target = "_blank"), "see link below for options"),
-              tags$br(),
-              # shinycssloaders::withSpinner(
-                tags$strong("Download Details:"),  textOutput("gbifDownloadSpecifics"),
-              # ),
-              tags$br(),
-              actionButton("gbifToMap", "Add GBIF to map")
-            ),
-            accordion_panel(
-              "3. Upload Your own data",
-              p(tags$a(href = "https://docs.google.com/spreadsheets/d/1BeDUBCg2BJ1DYpW47bxYH8p8CJAVqgM5rafyz81RoOc/edit?usp=sharing", "View Data Format Example", target = "_blank")),
-              fileInput("upload", "Upload a file"),
-              tags$p("Testing for expected column names"),
-              textOutput("validateColNames"),
-              actionButton("uploadToMap", "add uploaded to map")
-            ),
-            accordion_panel(
-              "4. Remove Data from Map ",
-              "Selecting a button will remove a specific layer from the map. The toggle buttons in the top left corner of the map can be uses to hide specific layers.",
-              actionButton("removeGBIF", "Remove all GBIF data"),
-              actionButton("removeUpload", "Remove uploaded data")
-            ),
-            accordion_panel(
-              "5. Move data to Gap Analysis",
-              "Select the button below with gather all GBIF and uploaded datasets and add them to the Gap Analysis Map.",
-              actionButton("compileDatasets", "Compile Data For Gap Analysis")
-              ),
-            
-            
-          )
-        ),
-        # main panel features
-        card(
-          card_header("Map of Downloaded and Uploaded Datasets"),
-          leaflet::leafletOutput("map1"),
-          # card_footer("Description of the map? ")
-        )
-      ),
-    navset_card_tab(
-        height = 450,
-        full_screen = TRUE,
-        title = "Tabular Data of the Records",
-        nav_panel(
-          "GBIF_table",
-          downloadButton("download1", "Download the GBIF data"),
-          card_title("GBIF Records"),
-          shinycssloaders::withSpinner(
-          DTOutput("mapTableGBIF")),
-        ),
-        nav_panel(
-          "Uploaded Data",
-          downloadButton("download2", "Download the Uploaded data"),
-          card_title("Uploaded Records"),
-          DTOutput("mapTableUpload"),
-        )
-      )
-      ### add a tab section here for evaluating GBIF or uploaded record 
-      # tags$p("**note**: currently this auto populates once a genus species is selected. Once we transistion to uploading data or grabing data from gbif and uploading users will have to 
-      #        use a button to add content to this table"),
-      # DTOutput("mapTable"),
-      # downloadButton("download1", "Download the current table")
-    ), ## end data analysis page
-
-  ## Gap Analysis ------------------------------------------------------------
-  nav_panel(
-    title = "Gap Analysis",
-    h2("Gap Analysis"),
-    # p("On this page individuals will be able to "),
-    # br(),
-    # tags$ul(
-    #   tags$li("Utilize the dataset generated on the first Data Analysis page"),
-    #   tags$li("Select a specific buffer size"),
-    #   tags$li("Evaluate data on the map"),
-    #   tags$li("Generate a statistical summary of the gap analysis"),
-    #   tags$li("Export the results of the gap analysis")
-    # ),
-    layout_sidebar(
-      # sidebar feature
-      height="600px", # does not seem to actively effect this
-      sidebar = sidebar(
-        position = "right",
-        accordion(
-          accordion_panel(
-            "Add Points to Map",
-            actionButton("addGapPoints", "Add records to the map")
-          ),
-          accordion_panel(
-            "Select Buffer Size",
-            selectInput("bufferSize",
-                        "Select Buffer Distances in KM",
-                        choices = c(1, 5, 10,20,50),
-                        selected = 50)
-          ),
-          accordion_panel(
-            "Run Gap Analysis",
-            actionButton("createBuffersGap", "1. Create Buffers"),
-            tags$br(),
-            actionButton("generateGapMaps", "2. Create Gap Maps Layers"),
-            tags$br(),
-            actionButton("generateGapSummary", "3. Generate Summary Figure")
-          ),
-          accordion_panel(
-            "Export Map",
-            p("placeholder for future functionality"),
-            actionButton("exportGapMap", "Download the current map")
-          )
-        )
-      ),
-      # main panel features
-      card(
-        card_header("Map of Gap Analysis Results"),
-        leaflet::leafletOutput("map2"),
-        # card_footer("Description of the map? ")
-      )
-    ),
-    navset_card_tab(
-        height = 450,
-        full_screen = TRUE,
-        title = "Results of the Gap Analysis",
-        nav_panel(
-          "Gap Analysis Results",
-          plotlyOutput('gapAnalysisResults')
-        ),
-        nav_panel(
-          "Input Data",
-          DTOutput("mapTable2"),
-        ),
-
-    )
-  ),## end gap analysis page
-  ## landing page panel ------------------------------------------------------
-  nav_panel(
-    title = "About",
-    # card(full_screen = TRUE,
-    #      h3("Project Summary"),
-    #      p(shinipsum::random_text(nwords = 100))
-    # ),
-    br(),
-    tags$blockquote("The GAMMA tool will allow users to quantify and assess the completeness of recent collections made, as well as enable meta collection communities to assess the current ex situ conservation status and collection gaps across all participating collections.", cite = "Hadley Wickham"),
-    br(),
-    card(full_screen = TRUE,
-         h2("Gap Analysis Method"),
-         p("This version of the Gap Analysis conservation assessment evaluates the ex situ conservation status of a taxon, combines these metrics into an integrated assessment, and calculates an indicator metric that can be compared across taxa.",
-         "The quantitative and spatial outputs demonstrate the state of conservation by highlighting where gaps in protection exist. The methods are fully described in Carver et al. (2021). Articles by Ramirez-Villegas et al. (2010), Castañeda-Álvarez and Khoury et al. (2016), and Khoury et al. (2019a, b; 2020))"),
-        
-         h3("Definitions of occurrence data categories"),
-         p(strong("Germplasm Records (G)")," : Occurrences in which a living sample (via plant or seed) is present in an ",em("ex situ")," conservation system (i.e., botanical garden, seed bank, genebank, etc.). "),
-         p(strong("Reference Records (H)")," : Occurrences that have a supporting herbarium or other reference record."),
-         
-         
-         h3("Definitions of conservation gap analysis scores"),
-        p(strong("The Sampling Representativeness Score ") ,em("ex situ"), "(SRS ex) calculates the ratio of germplasm accessions (G) available in ", em("ex situ")," repositories to reference (H) records for each taxon, making use of all compiled records irrespective of whether they include coordinates."),
-        p(strong("The Geographic Representativeness Score ") ,em("ex situ"), "(GRS ex situ) uses 50-km-radius buffers created around each G collection coordinate point to estimate geographic areas already well collected within the potential distribution models of each taxon and then calculates the proportion of the potential distribution model covered by these buffers."),
-        p(strong("The Ecological Representativeness Score ") ,em("ex situ"), "(ERS ex situ) calculates the proportion of terrestrial ecoregions (25) represented within the G buffered areas out of the total number of ecoregions occupied by the potential distribution model."),
-        p(strong("The  Final Conservation Score "), em("ex situ")," (FCS ex situ) was derived by calculating the average of the three ",em("ex situ")," conservation metrics."),
-    ),
-         
-    fluidRow(
-      column(12,
-             div(em("For any questions or feedback please reach out to Maintainer of the Website @ there email.com"),
-                 style="text-align:left"))
-    ),
-    h2("Project Background"),
-    p(style="text-align: center;",
-      "This project was led by Alanta Botanical Garden in collaboration with the IMLS GCC Growing
-      Metacollections team which includes individuals from ",
-      tags$a(href = "https://mortonarb.org/", "The Morton Arboretum", target = "_blank"),
-      ", ",
-      tags$a(href = "https://sdbg.org/", "San Diego Botanic Garden", target = "_blank"),
-      ", ",
-      tags$a(href = "https://www.montgomerybotanicalgardens.com/", "Montgomery Botanical Gardens at Oak Park", target = "_blank"),
-      ", ",
-      tags$a(href = "https://www.smith.edu/", "Smith College", target = "_blank"),
-      ", ",
-      tags$a(href = "https://www.auburn.edu/", "Auburn University", target = "_blank"),
-      ", ",
-      tags$a(href = "https://www.lotusland.org/", "Lotus Land", target = "_blank"),
-      ".",
-      tags$br(),
-      tags$strong("This work is made possible by the Institute of Museum and Library Services ",
-                  tags$a(href = "https://www.imls.gov/", "(MG-252894-OMS-23).", target = "_blank"),
-                  "." ),
-    ),
-    # fluidRow(
-    #   p("Multiple logos?"),
-    #   column(3,
-    #          div(img(src="temp.png", alt="Logo 2", align="center", width="60%"), style="text-align:center")),
-    #   column(3,
-    #          div(img(src="temp.png", alt="Logo 2", align="center", width="60%"), style="text-align:center")),
-    #   column(3,
-    #          div(img(src="temp.png", alt="Logo 3", align="center", width="50%"), style="text-align:center")),
-    #   column(3,
-    #          div(img(src="temp.png", alt="Logo 4", align="center", width="40%"), style="text-align:center"))
-    # ),
-    br(),
-    fluidRow(
-      # p("Or a single logo?"),
-      column(2),
-      column(8,
-             div(img(src="Metacollections project logo_color.png", alt="Logo 2", align="center", width="60%"), style="text-align:center")),
-      column(2),
-    ),
-    
-    card(full_screen = TRUE,
-         h3("Learn More"),
-         p(random_text(nwords = 300)),
-         br()
-    ),
-    hr(),
-    h2("Who We Are"),
-    p("This website is the result of a collaboration among the following individuals and institutions:"),
-    # fluidRow(
-    #   column(3,
-    #          strong("Alanta Botanical Garden"),
-    #          p(tags$a(href = "https://atlantabg.org/article/emily-e-d-coffey-ph-d/", "Emily E. D. Coffey, Ph.D", target = "_blank")),
-    #          p(tags$a(href = "https://atlantabg.org/article/jean-linsky-m-sc/", "Jean Linsky, M.Sc.", target = "_blank")),
-    #          p("etc...")
-    #   ),
-    #   column(3,
-    #          strong("Other organizations and people as needed"),
-    #          p("Superstar 1"),
-    #          p("Superstar 2")
-    #   ),
-    # ),
-  ),
-  nav_spacer(),
-
-  ## Links -------------------------------------------------------------------
-    nav_menu(
-      title = "External Links",
-      align = "right",
-      nav_item(tags$a("Source Code", href = "https://github.com/Jonathan-Gore/gap-analysis-shiny-app"), target="_blank"),
-      nav_item(tags$a("Alanta Botanical Garden", href = "https://atlantabg.org/"), target="_blank")
-      ) # edd nav bar links
-  )## end navbar page
+  # nav_panel(
+  #   title = "Data Evaluation",
+  #     # define row for containing the map feaut
+  #     # defeine the sidebar element
+  #     layout_sidebar(
+  #       height = "700px",
+  #     # sidebar feature
+  #       sidebar = sidebar(
+  #         position = "left",
+  #         accordion(
+  #           open = FALSE,
+  #           accordion_panel(
+  #             # user selects the geneus 
+  #             "1. Select Taxon",
+  #             shiny::selectInput(
+  #               inputId = "genusSelect",
+  #               label = "Genus: ",
+  #               choices = unique(gbifBackbone$genus),
+  #               selected = "Magnolia"),
+  #             # list of subspecies is generate for selection 
+  #             uiOutput("speciesSelect"),
+  #             # when possible the option for var subsp is listed
+  #             uiOutput("taxonRank"),
+  #             # final filter of sub species it provided 
+  #             uiOutput("speciesInfraspecific"),
+  #             # print the current taxon name 
+  #             textOutput("currentSpecies")
+  #           ),
+  #           accordion_panel(
+  #             "2. Download and Display GBIF data ",
+  #             tags$br(),
+  #             tags$strong("GBIF Taxon ID:"),  textOutput("gbiftaxonid"),
+  #             checkboxInput("allowSyn", "Allow Synonyms in Data", TRUE),
+  #             # p(tags$a(href = "https://docs.google.com/spreadsheets/d/1BeDUBCg2BJ1DYpW47bxYH8p8CJAVqgM5rafyz81RoOc/edit#gid=1735583299", "View GBIF Issue Codes ", target = "_blank")),
+  #             actionButton("gbifPull", "Download Data from Gbif"),
+  #             textInput("issueCodes", 
+  #                       label = tags$a(href = "https://docs.google.com/spreadsheets/d/1BeDUBCg2BJ1DYpW47bxYH8p8CJAVqgM5rafyz81RoOc/edit#gid=1735583299",
+  #                                      "View GBIF Issue Codes ", target = "_blank"), "see link below for options"),
+  #             tags$br(),
+  #             # shinycssloaders::withSpinner(
+  #               tags$strong("Download Details:"),  textOutput("gbifDownloadSpecifics"),
+  #             # ),
+  #             tags$br(),
+  #             actionButton("gbifToMap", "Add GBIF to map")
+  #           ),
+  #           accordion_panel(
+  #             "3. Upload Your own data",
+  #             p(tags$a(href = "https://docs.google.com/spreadsheets/d/1BeDUBCg2BJ1DYpW47bxYH8p8CJAVqgM5rafyz81RoOc/edit?usp=sharing", "View Data Format Example", target = "_blank")),
+  #             fileInput("upload", "Upload a file"),
+  #             tags$p("Testing for expected column names"),
+  #             textOutput("validateColNames"),
+  #             actionButton("uploadToMap", "add uploaded to map")
+  #           ),
+  #           accordion_panel(
+  #             "4. Remove Data from Map ",
+  #             "Selecting a button will remove a specific layer from the map. The toggle buttons in the top left corner of the map can be uses to hide specific layers.",
+  #             actionButton("removeGBIF", "Remove all GBIF data"),
+  #             actionButton("removeUpload", "Remove uploaded data")
+  #           ),
+  #           accordion_panel(
+  #             "5. Move data to Gap Analysis",
+  #             "Select the button below with gather all GBIF and uploaded datasets and add them to the Gap Analysis Map.",
+  #             actionButton("compileDatasets", "Compile Data For Gap Analysis")
+  #             ),
+  #           
+  #           
+  #         )
+  #       ),
+  #       # main panel features
+  #       card(
+  #         card_header("Map of Downloaded and Uploaded Datasets"),
+  #         leaflet::leafletOutput("map1"),
+  #         # card_footer("Description of the map? ")
+  #       )
+  #     ),
+  #   # navset_card_tab(
+  #   #     height = 450,
+  #   #     full_screen = TRUE,
+  #   #     title = "Tabular Data of the Records",
+  #   #     nav_panel(
+  #   #       "GBIF_table",
+  #   #       downloadButton("download1", "Download the GBIF data"),
+  #   #       card_title("GBIF Records"),
+  #   #       shinycssloaders::withSpinner(
+  #   #       DTOutput("mapTableGBIF")),
+  #   #     ),
+  #   #     nav_panel(
+  #   #       "Uploaded Data",
+  #   #       downloadButton("download2", "Download the Uploaded data"),
+  #   #       card_title("Uploaded Records"),
+  #   #       DTOutput("mapTableUpload"),
+  #   #     )
+  #   #   )
+  #     ### add a tab section here for evaluating GBIF or uploaded record 
+  #     # tags$p("**note**: currently this auto populates once a genus species is selected. Once we transistion to uploading data or grabing data from gbif and uploading users will have to 
+  #     #        use a button to add content to this table"),
+  #     # DTOutput("mapTable"),
+  #     # downloadButton("download1", "Download the current table")
+  #   ), ## end data analysis page
+  # 
+  # ## Gap Analysis ------------------------------------------------------------
+  # nav_panel(
+  #   title = "Gap Analysis",
+  #   h2("Gap Analysis"),
+  #   # p("On this page individuals will be able to "),
+  #   # br(),
+  #   # tags$ul(
+  #   #   tags$li("Utilize the dataset generated on the first Data Analysis page"),
+  #   #   tags$li("Select a specific buffer size"),
+  #   #   tags$li("Evaluate data on the map"),
+  #   #   tags$li("Generate a statistical summary of the gap analysis"),
+  #   #   tags$li("Export the results of the gap analysis")
+  #   # ),
+  #   layout_sidebar(
+  #     # sidebar feature
+  #     height="600px", # does not seem to actively effect this
+  #     sidebar = sidebar(
+  #       position = "right",
+  #       accordion(
+  #         accordion_panel(
+  #           "Add Points to Map",
+  #           actionButton("addGapPoints", "Add records to the map")
+  #         ),
+  #         accordion_panel(
+  #           "Select Buffer Size",
+  #           selectInput("bufferSize",
+  #                       "Select Buffer Distances in KM",
+  #                       choices = c(1, 5, 10,20,50),
+  #                       selected = 50)
+  #         ),
+  #         accordion_panel(
+  #           "Run Gap Analysis",
+  #           actionButton("createBuffersGap", "1. Create Buffers"),
+  #           tags$br(),
+  #           actionButton("generateGapMaps", "2. Create Gap Maps Layers"),
+  #           tags$br(),
+  #           actionButton("generateGapSummary", "3. Generate Summary Figure")
+  #         ),
+  #         accordion_panel(
+  #           "Export Map",
+  #           p("placeholder for future functionality"),
+  #           actionButton("exportGapMap", "Download the current map")
+  #         )
+  #       )
+  #     ),
+  #     # main panel features
+  #     card(
+  #       card_header("Map of Gap Analysis Results"),
+  #       leaflet::leafletOutput("map2"),
+  #       # card_footer("Description of the map? ")
+  #     )
+  #   ),
+  #   navset_card_tab(
+  #       height = 450,
+  #       full_screen = TRUE,
+  #       title = "Results of the Gap Analysis",
+  #       nav_panel(
+  #         "Gap Analysis Results",
+  #         plotlyOutput('gapAnalysisResults')
+  #       ),
+  #       nav_panel(
+  #         "Input Data",
+  #         DTOutput("mapTable2"),
+  #       ),
+  # 
+  #   )
+  # ),## end gap analysis page
+  # ## landing page panel ------------------------------------------------------
+  # 
+  # nav_spacer(),
+  # 
+  # ## Links -------------------------------------------------------------------
+  #   nav_menu(
+  #     title = "External Links",
+  #     align = "right",
+  #     nav_item(tags$a("Source Code", href = "https://github.com/Jonathan-Gore/gap-analysis-shiny-app"), target="_blank"),
+  #     nav_item(tags$a("Alanta Botanical Garden", href = "https://atlantabg.org/"), target="_blank")
+  #     ) # edd nav bar links
+  # )## end navbar page
 )## end ui
   
 
-# server ----------------------------------------------------------------
+server ----------------------------------------------------------------
 server <- function(input, output) {
   # UI select Subspecies 
   output$speciesSelect = renderUI({
