@@ -23,6 +23,7 @@ library(shinyalert)
 library(plotly)
 library(sf)
 library(tidyterra)
+library(leaflet.extras)
 
 # source modules --------------------------------------------------------
 lapply(list.files(
@@ -67,7 +68,16 @@ map1 <- leaflet::leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16))|>
     position = "topleft",
     overlayGroups = c("GBIF", "Upload Dataset"),
     options = layersControlOptions(collapsed = TRUE)
-  )
+  )|> 
+  leaflet.extras::addDrawToolbar(
+    targetGroup = 'draw',
+    polylineOptions = FALSE,
+    rectangleOptions = FALSE,
+    circleOptions = FALSE,
+    markerOptions = FALSE,
+    circleMarkerOptions = FALSE,
+    editOptions = leaflet.extras::editToolbarOptions())
+#     editOptions = editToolbarOptions(edit = FALSE, selectedPathOptions = selectedPathOptions()))
 # 
 map2 <- leaflet::leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16))|>
   addTiles()|>
@@ -118,7 +128,6 @@ ui <- fluidPage(
     title = "Gap Analysis and Metacollection Management",
     bg ="#52b788",
     window_title = "GAMMA Tool",
-    underline = TRUE,
     position = "static-top",
     # footer = p("this is footer content? Not very good at the moment"),
     # set some space between the Application title and the tab selectors 
@@ -187,6 +196,10 @@ ui <- fluidPage(
               "5. Move data to Gap Analysis",
               "Select the button below with gather all GBIF and uploaded datasets and add them to the Gap Analysis Map.",
               actionButton("compileDatasets", "Compile Data For Gap Analysis")
+              ),
+            accordion_panel(
+                "6. Troubleshooting",
+                textOutput("testPrint"),
               ),
             
             
@@ -496,23 +509,30 @@ server <- function(input, output) {
     }
   })
 
-
+  # gbif map elements -------------------------------------------------------
+  # list to store the selections for tracking
+  data_of_click <- reactiveValues(clickedMarker = list())
+  
   # create spatial data for example/GBIF feature  -----------------------------------
   sp1 <- observeEvent(input$gbifToMap, {
     # generate spatial object 
     pointsVals <- gbifData() |>
       sf::st_as_sf(coords = c("Longitude","Latitude"), crs = 4326, remove = FALSE)|>
       dplyr::mutate(
+        id = row_number(),
         popup = paste0("<strong>", as.character(`Taxon Name`),"</strong>", # needs to be text
                        "<br/><strong> Current Germplasm Type: </strong>", `Current Germplasm Type`,
                        "<br/><b>Collector Name:</b> ", Collector,
-                       "<br/><b>Locality Description):</b> ", Locality),
+                       "<br/><b>Locality Description:</b> ", Locality,
+                       "<br/><b>ID:</b> ", id),
         color = case_when(
           `Current Germplasm Type` == "H" ~ "#1184d4",
           `Current Germplasm Type` == "G" ~ "#6300f0"
         )
       )
     
+
+
     # update the map
     leafletProxy("map1")|>
       setView(lng = mean(pointsVals$Longitude), lat = mean(pointsVals$Latitude), zoom = 6)|>
@@ -535,6 +555,62 @@ server <- function(input, output) {
         group = "GBIF"
       )
   })
+  
+  
+  # draw selecting elements  ------------------------------------------------
+
+  observeEvent(input$map_marker_click, {
+    print(input$map_marker_click)
+  })  
+  
+  coords <- observeEvent(input$map_draw_new_feature, {
+    shape <-  input$map_draw_new_feature
+    # derive polygon coordinates and feature_type from shape input
+    polygon_coordinates <- shape$geometry$coordinates
+    print(polygon_coordinates)
+  })
+  output$testPrint <- shiny::renderPrint({print(coords)})
+  
+  
+  # penvs_drawBgExtent_module_map <- function(map, common) {
+  #   spp <- common$spp
+  #   curSp <- common$curSp
+  #   occs <- common$occs
+  #   
+  #   map %>% leaflet.extras::addDrawToolbar(
+  #     targetGroup = 'draw',
+  #     polylineOptions = FALSE,
+  #     rectangleOptions = FALSE,
+  #     circleOptions = FALSE,
+  #     markerOptions = FALSE,
+  #     circleMarkerOptions = FALSE,
+  #     editOptions = leaflet.extras::editToolbarOptions()
+  #   )
+    
+    # if (is.null(spp[[curSp()]]$procEnvs$bgExt)) {
+    #   map %>% clearAll() %>%
+    #     addCircleMarkers(data = occs(), lat = ~latitude, lng = ~longitude,
+    #                      radius = 5, color = 'red', fill = TRUE, fillColor = "red",
+    #                      fillOpacity = 0.2, weight = 2, popup = ~pop)
+    # } else {
+    #   map %>% clearAll() %>%
+    #     addCircleMarkers(data = occs(), lat = ~latitude, lng = ~longitude,
+    #                      radius = 5, color = 'red', fill = TRUE, fillColor = "red",
+    #                      fillOpacity = 0.2, weight = 2, popup = ~pop)
+    #   polys <- spp[[curSp()]]$procEnvs$bgExt@polygons[[1]]@Polygons
+    #   if (length(polys) == 1) {
+    #     xy <- list(polys[[1]]@coords)
+    #   } else {
+    #     xy <- lapply(polys, function(x) x@coords)
+    #   }
+    #   for (shp in xy) {
+    #     map %>%
+    #       addPolygons(lng = shp[, 1], lat = shp[, 2], weight = 4, color = "gray",
+    #                   group = 'bgShp')
+    #   }
+    # }
+  # }
+  
   
   # create spatial data for uploaded data  -----------------------------------
  observeEvent(input$uploadToMap, {
@@ -588,8 +664,48 @@ server <- function(input, output) {
       ) 
   })
   
-
-  # Remove layers from map  -------------------------------------------------
+  penvs_drawBgExtent_module_map <- function(map, common) {
+    spp <- common$spp
+    curSp <- common$curSp
+    occs <- common$occs
+    
+    map %>% leaflet.extras::addDrawToolbar(
+      targetGroup = 'draw',
+      polylineOptions = FALSE,
+      rectangleOptions = FALSE,
+      circleOptions = FALSE,
+      markerOptions = FALSE,
+      circleMarkerOptions = FALSE,
+      editOptions = leaflet.extras::editToolbarOptions()
+    )
+    
+    if (is.null(spp[[curSp()]]$procEnvs$bgExt)) {
+      map %>% clearAll() %>%
+        addCircleMarkers(data = occs(), lat = ~latitude, lng = ~longitude,
+                         radius = 5, color = 'red', fill = TRUE, fillColor = "red",
+                         fillOpacity = 0.2, weight = 2, popup = ~pop)
+    } else {
+      map %>% clearAll() %>%
+        addCircleMarkers(data = occs(), lat = ~latitude, lng = ~longitude,
+                         radius = 5, color = 'red', fill = TRUE, fillColor = "red",
+                         fillOpacity = 0.2, weight = 2, popup = ~pop)
+      polys <- spp[[curSp()]]$procEnvs$bgExt@polygons[[1]]@Polygons
+      if (length(polys) == 1) {
+        xy <- list(polys[[1]]@coords)
+      } else {
+        xy <- lapply(polys, function(x) x@coords)
+      }
+      for (shp in xy) {
+        map %>%
+          addPolygons(lng = shp[, 1], lat = shp[, 2], weight = 4, color = "gray",
+                      group = 'bgShp')
+      }
+    }
+  }
+  
+  
+  
+  
   ## GBIF 
   observeEvent(input$removeGBIF, {
     leafletProxy("map1")|>
