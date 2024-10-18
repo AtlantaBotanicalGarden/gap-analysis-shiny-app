@@ -4,7 +4,7 @@ library(jsonlite)
 library(geojsonio)
 library(geojsonsf)
 library(sf)
-
+library(rhandsontable)
 
 dat = data.frame(a = 1:50, 
                  b = rnorm(50, 2, 1), 
