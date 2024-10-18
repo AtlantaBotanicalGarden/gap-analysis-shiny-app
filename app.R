@@ -60,20 +60,28 @@ names(tempTable) <- c(expectedNames ,"geometry")
 names(tempTable) <- expectedNames
 # 
 # move this to a function !!!
-map1 <- leaflet::leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16))|>
-  addTiles()|> 
-  # layer control groups should not be set at the map proxy level as they will overwrite the existing element.
-  addLayersControl( 
+map1 <-
+  leaflet::leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16)) |>
+  addProviderTiles("OpenStreetMap", group = "OpenStreetMap") |>
+  addProviderTiles("Esri.WorldTopoMap", group = "Topography") |>
+  addProviderTiles("Esri.WorldImagery", group = "Imagery") |>  # layer control groups should not be set at the map proxy level as they will overwrite the existing element.
+  addLayersControl(
     position = "topleft",
     overlayGroups = c("GBIF", "Upload Dataset"),
-    options = layersControlOptions(collapsed = TRUE)
+    baseGroups = c("OpenStreetMap",
+                   "Topography",
+                   "Imagery"),
+    options = layersControlOptions(collapsed = FALSE)
   )
 # 
 map2 <- leaflet::leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16))|>
-  addTiles()|>
-  addMapPane("points", zIndex = 420) |>
-  addMapPane("buffers", zIndex = 410)|>
-  addMapPane("gaps", zIndex = 405) |> # shown below ames_circles%>% # shown below ames_circles
+  addProviderTiles("OpenStreetMap", group = "OpenStreetMap") |>
+  addProviderTiles("Esri.WorldTopoMap", group = "Topography") |>
+  addProviderTiles("Esri.WorldImagery", group = "Imagery") |>
+  addMapPane("points", zIndex = 215) |>
+  addMapPane("buffers", zIndex = 210)|>
+  addMapPane("gaps", zIndex = 205) |> 
+  addMapPane("ecoregions", zIndex = 205) |> 
   addLayersControl( 
     position = "topleft",
     overlayGroups = c("Reference Records",
@@ -81,9 +89,12 @@ map2 <- leaflet::leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16))|>
                       "Buffers",
                       "GRS gaps",
                       "ERS gaps"),
+    baseGroups = c(
+      "OpenStreetMap",
+      "Topography",
+      "Imagery"
+    ),
     options = layersControlOptions(collapsed = FALSE))
-# |>
-#   leaflet::hideGroup(c("GRS gaps", "ERS gaps"))
 
 
 
@@ -112,16 +123,17 @@ ui <- fluidPage(
     tags$h6(style="color:red; background-color: #f5e642;    width: 100%;text-align: center; padding:10px ",
               "This application is under active development. If you experience a loss of connection while using the application please refresh your page or try again at a different time. We apologize for any inconvience.")
     ),
+
   ## navbarPage --------------------------------------------------------------
-  ### primary container for the application. 
+  ### primary container for the application.
   page_navbar(
     title = "Gap Analysis and Metacollection Management",
     bg ="#52b788",
     window_title = "GAMMA Tool",
-    underline = TRUE,
+    # underline = TRUE,
     position = "static-top",
     # footer = p("this is footer content? Not very good at the moment"),
-    # set some space between the Application title and the tab selectors 
+    # set some space between the Application title and the tab selectors
     nav_spacer(),
   ## Data Evaluation ---------------------------------------------------------
   nav_panel(
@@ -136,20 +148,20 @@ ui <- fluidPage(
           accordion(
             open = FALSE,
             accordion_panel(
-              # user selects the geneus 
+              # user selects the geneus
               "1. Select Taxon",
               shiny::selectInput(
                 inputId = "genusSelect",
                 label = "Genus: ",
                 choices = unique(gbifBackbone$genus),
                 selected = "Magnolia"),
-              # list of subspecies is generate for selection 
+              # list of subspecies is generate for selection
               uiOutput("speciesSelect"),
               # when possible the option for var subsp is listed
               uiOutput("taxonRank"),
-              # final filter of sub species it provided 
+              # final filter of sub species it provided
               uiOutput("speciesInfraspecific"),
-              # print the current taxon name 
+              # print the current taxon name
               textOutput("currentSpecies")
             ),
             accordion_panel(
@@ -159,7 +171,7 @@ ui <- fluidPage(
               checkboxInput("allowSyn", "Allow Synonyms in Data", TRUE),
               # p(tags$a(href = "https://docs.google.com/spreadsheets/d/1BeDUBCg2BJ1DYpW47bxYH8p8CJAVqgM5rafyz81RoOc/edit#gid=1735583299", "View GBIF Issue Codes ", target = "_blank")),
               actionButton("gbifPull", "Download Data from Gbif"),
-              textInput("issueCodes", 
+              textInput("issueCodes",
                         label = tags$a(href = "https://docs.google.com/spreadsheets/d/1BeDUBCg2BJ1DYpW47bxYH8p8CJAVqgM5rafyz81RoOc/edit#gid=1735583299",
                                        "View GBIF Issue Codes ", target = "_blank"), "see link below for options"),
               tags$br(),
@@ -188,8 +200,8 @@ ui <- fluidPage(
               "Select the button below with gather all GBIF and uploaded datasets and add them to the Gap Analysis Map.",
               actionButton("compileDatasets", "Compile Data For Gap Analysis")
               ),
-            
-            
+
+
           )
         ),
         # main panel features
@@ -217,26 +229,12 @@ ui <- fluidPage(
           DTOutput("mapTableUpload"),
         )
       )
-      ### add a tab section here for evaluating GBIF or uploaded record 
-      # tags$p("**note**: currently this auto populates once a genus species is selected. Once we transistion to uploading data or grabing data from gbif and uploading users will have to 
-      #        use a button to add content to this table"),
-      # DTOutput("mapTable"),
-      # downloadButton("download1", "Download the current table")
     ), ## end data analysis page
 
   ## Gap Analysis ------------------------------------------------------------
   nav_panel(
     title = "Gap Analysis",
     h2("Gap Analysis"),
-    # p("On this page individuals will be able to "),
-    # br(),
-    # tags$ul(
-    #   tags$li("Utilize the dataset generated on the first Data Analysis page"),
-    #   tags$li("Select a specific buffer size"),
-    #   tags$li("Evaluate data on the map"),
-    #   tags$li("Generate a statistical summary of the gap analysis"),
-    #   tags$li("Export the results of the gap analysis")
-    # ),
     layout_sidebar(
       # sidebar feature
       height="600px", # does not seem to actively effect this
@@ -285,7 +283,7 @@ ui <- fluidPage(
           plotlyOutput('gapAnalysisResults')
         ),
         nav_panel(
-          "Input Data",
+          title = "Input Data",
           DTOutput("mapTable2"),
         ),
 
@@ -294,10 +292,6 @@ ui <- fluidPage(
   ## landing page panel ------------------------------------------------------
   nav_panel(
     title = "About",
-    # card(full_screen = TRUE,
-    #      h3("Project Summary"),
-    #      p(shinipsum::random_text(nwords = 100))
-    # ),
     br(),
     tags$blockquote("The GAMMA tool will allow users to quantify and assess the completeness of recent collections made, as well as enable meta collection communities to assess the current ex situ conservation status and collection gaps across all participating collections.", cite = "Hadley Wickham"),
     br(),
@@ -305,19 +299,18 @@ ui <- fluidPage(
          h2("Gap Analysis Method"),
          p("This version of the Gap Analysis conservation assessment evaluates the ex situ conservation status of a taxon, combines these metrics into an integrated assessment, and calculates an indicator metric that can be compared across taxa.",
          "The quantitative and spatial outputs demonstrate the state of conservation by highlighting where gaps in protection exist. The methods are fully described in Carver et al. (2021). Articles by Ramirez-Villegas et al. (2010), Castañeda-Álvarez and Khoury et al. (2016), and Khoury et al. (2019a, b; 2020))"),
-        
+
          h3("Definitions of occurrence data categories"),
          p(strong("Germplasm Records (G)")," : Occurrences in which a living sample (via plant or seed) is present in an ",em("ex situ")," conservation system (i.e., botanical garden, seed bank, genebank, etc.). "),
          p(strong("Reference Records (H)")," : Occurrences that have a supporting herbarium or other reference record."),
-         
-         
+
+
          h3("Definitions of conservation gap analysis scores"),
         p(strong("The Sampling Representativeness Score ") ,em("ex situ"), "(SRS ex) calculates the ratio of germplasm accessions (G) available in ", em("ex situ")," repositories to reference (H) records for each taxon, making use of all compiled records irrespective of whether they include coordinates."),
         p(strong("The Geographic Representativeness Score ") ,em("ex situ"), "(GRS ex situ) uses 50-km-radius buffers created around each G collection coordinate point to estimate geographic areas already well collected within the potential distribution models of each taxon and then calculates the proportion of the potential distribution model covered by these buffers."),
         p(strong("The Ecological Representativeness Score ") ,em("ex situ"), "(ERS ex situ) calculates the proportion of terrestrial ecoregions (25) represented within the G buffered areas out of the total number of ecoregions occupied by the potential distribution model."),
         p(strong("The  Final Conservation Score "), em("ex situ")," (FCS ex situ) was derived by calculating the average of the three ",em("ex situ")," conservation metrics."),
     ),
-         
     fluidRow(
       column(12,
              div(em("For any questions or feedback please reach out to Maintainer of the Website @ there email.com"),
@@ -344,17 +337,6 @@ ui <- fluidPage(
                   tags$a(href = "https://www.imls.gov/", "(MG-252894-OMS-23).", target = "_blank"),
                   "." ),
     ),
-    # fluidRow(
-    #   p("Multiple logos?"),
-    #   column(3,
-    #          div(img(src="temp.png", alt="Logo 2", align="center", width="60%"), style="text-align:center")),
-    #   column(3,
-    #          div(img(src="temp.png", alt="Logo 2", align="center", width="60%"), style="text-align:center")),
-    #   column(3,
-    #          div(img(src="temp.png", alt="Logo 3", align="center", width="50%"), style="text-align:center")),
-    #   column(3,
-    #          div(img(src="temp.png", alt="Logo 4", align="center", width="40%"), style="text-align:center"))
-    # ),
     br(),
     fluidRow(
       # p("Or a single logo?"),
@@ -363,7 +345,7 @@ ui <- fluidPage(
              div(img(src="Metacollections project logo_color.png", alt="Logo 2", align="center", width="60%"), style="text-align:center")),
       column(2),
     ),
-    
+
     card(full_screen = TRUE,
          h3("Learn More"),
          p(random_text(nwords = 300)),
@@ -372,23 +354,9 @@ ui <- fluidPage(
     hr(),
     h2("Who We Are"),
     p("This website is the result of a collaboration among the following individuals and institutions:"),
-    # fluidRow(
-    #   column(3,
-    #          strong("Alanta Botanical Garden"),
-    #          p(tags$a(href = "https://atlantabg.org/article/emily-e-d-coffey-ph-d/", "Emily E. D. Coffey, Ph.D", target = "_blank")),
-    #          p(tags$a(href = "https://atlantabg.org/article/jean-linsky-m-sc/", "Jean Linsky, M.Sc.", target = "_blank")),
-    #          p("etc...")
-    #   ),
-    #   column(3,
-    #          strong("Other organizations and people as needed"),
-    #          p("Superstar 1"),
-    #          p("Superstar 2")
-    #   ),
-    # ),
   ),
   nav_spacer(),
-
-  ## Links -------------------------------------------------------------------
+  # ## Links -------------------------------------------------------------------
     nav_menu(
       title = "External Links",
       align = "right",
@@ -522,7 +490,8 @@ server <- function(input, output) {
         stroke = FALSE,
         fillOpacity = 0.9,
         popup = ~popup,
-        group = "GBIF"
+        group = "GBIF",
+        
       ) |>
       # single legend for the GBIF features
       addLegend(
@@ -566,7 +535,8 @@ server <- function(input, output) {
         stroke = TRUE,
         fillOpacity = 0.9,
         popup = ~popup,
-        group = "Upload Dataset"
+        group = "Upload Dataset",
+        options = pathOptions(pane = "buffers")
       ) |>
       addCircleMarkers(
         data = gVals2,
@@ -574,7 +544,8 @@ server <- function(input, output) {
         stroke = TRUE,
         fillOpacity = 0.9,
         popup = ~popup,
-        group = "Upload Dataset"
+        group = "Upload Dataset",
+        options = pathOptions(pane = "buffers")
       ) |>
       # single legend for the GBIF features
       addLegend(
@@ -726,18 +697,36 @@ server <- function(input, output) {
       dplyr::filter(`Current Germplasm Type` == "G")
     hGap <- gapPoints() |>
       dplyr::filter(`Current Germplasm Type` == "H")
+    
+    # icons for the specific data source 
+    gIcons <- icons(
+      iconUrl = ifelse(gGap$source == "GBIF",
+                       "www/purpleSquare.png",
+                       "www/purpleTriangle.png"),
+      iconWidth = 14,
+      iconHeight = 14)
+    hIcons <- icons(
+      iconUrl = ifelse(hGap$source == "GBIF" ,
+                       "www/blueSquare.png",
+                       "www/blueTriangle.png"),
+      iconWidth = 14,
+      iconHeight = 14)
+    
+    
     if(nrow(gGap)==0){
       # update the map 
       leafletProxy("map2")|>
         setView(lng = mean(gapPoints()$Longitude), lat = mean(gapPoints()$Latitude), zoom = 6)|>
-        addCircleMarkers(
+        addMarkers(
           data = hGap,
-          color = ~color,
-          stroke = TRUE,
-          radius = 5,
-          fillOpacity = 0.9,
+          # color = ~color,
+          # stroke = TRUE,
+          # radius = 5,
+          # fillOpacity = 0.9,
           popup = ~popup,
-          group = "Reference Records"
+          icon = hIcons,
+          group = "Reference Records",
+          options = pathOptions(pane = "points")
         )|>
         # single legend for the GBIF features
         addLegend(
@@ -755,23 +744,27 @@ server <- function(input, output) {
         setView(lng = mean(gapPoints()$Longitude), lat = mean(gapPoints()$Latitude), zoom = 6)|>
         clearGroup("Reference Records")|>
         clearGroup("Germplasm Records")|>      
-        addCircleMarkers(
+        addMarkers(
           data = hGap,
-          color = ~color,
-          stroke = FALSE,
-          radius = 5,
-          fillOpacity = 0.9,
+          # color = ~color,
+          # stroke = FALSE,
+          # radius = 5,
+          # fillOpacity = 0.9,
           popup = ~popup,
-          group = "Reference Records"
+          icon = hIcons,
+          group = "Reference Records",
+          options = pathOptions(pane = "points")
         ) |>
-        addCircleMarkers(
+    addMarkers(
           data = gGap,
-          color = ~color,
-          stroke = FALSE,
-          radius = 5,
-          fillOpacity = 0.9,
+          # color = ~color,
+          # stroke = FALSE,
+          # radius = 5,
+          # fillOpacity = 0.9,
           popup = ~popup,
-          group = "Germplasm Records"
+          icon = gIcons,
+          group = "Germplasm Records",
+          options = pathOptions(pane = "points")
         ) |>
         # single legend for the GBIF features
         addLegend(
@@ -858,12 +851,14 @@ server <- function(input, output) {
           data = hbuf,
           group = "Buffers",
           color = "blue",
-          fillOpacity = 0.9) |>
+          fillOpacity = 0.9,
+          options = pathOptions(pane = "buffers")) |>
         addPolygons(
           data = gbuf,
           group = "Buffers",
           color = "purple",
-          fillOpacity = 0.9)|>
+          fillOpacity = 0.9,
+          options = pathOptions(pane = "buffers"))|>
         addLegend(
           position = "topright",
           layerId = "bufferLegend",
@@ -880,7 +875,8 @@ server <- function(input, output) {
           data = hbuf,
           group = "Buffers",
           color = "blue",
-          fillOpacity = 0.9) |>
+          fillOpacity = 0.9,
+          options = pathOptions(pane = "buffers")) |>
         addLegend(
           position = "topright",
           layerId = "bufferLegend",
@@ -970,7 +966,8 @@ server <- function(input, output) {
                         fillColor = "yellow",
                         opacity = 0.4,
                         bringToFront = TRUE,
-                        sendToBack = TRUE)
+                        sendToBack = TRUE),
+            options = pathOptions(pane = "ecoregions")
           ) |>
           # grsex gap layer
           addPolygons(
@@ -978,7 +975,8 @@ server <- function(input, output) {
             color = "#d8b365",
             opacity = 0.2,
             group = "GRS gaps",
-            fillOpacity = 0.4)|>
+            fillOpacity = 0.4,
+            options = pathOptions(pane = "gaps"))|>
       addLegend(
             position = "topright",
             layerId = "ersGapLegend",
@@ -997,144 +995,11 @@ server <- function(input, output) {
         opacity = 1,
         group = "GRS gaps"
       )
-    #     # |>
-    #       # single legend for the GBIF features
-    #       # addLegend(
-    #       #   position = "topright",
-    #       #   colors = c("purple"),
-    #       #   labels = c("G"),
-    #       #   title = "Germplasm Records",
-    #       #   opacity = 1,
-    #       #   group = "G Buffers"
-    #       # )
+
   })
  
   
   
-  # observeEvent(input$createBuffersGap, {
-  #   
-  #   # ersmap 
-  #   ersMap <- ersexGap()
-  #   grsMap <- grsexGap()
-  #   
-  #   
-  #   # pull points for an sf condition statement
-  #   gGap <- gapPoints() |>
-  #     dplyr::filter(`Current Germplasm Type` == "G")
-  #   # gapAreas <- hGapBuffer - gGapBuffer
-  #   if(nrow(gGap)==0){
-  #     # update the map 
-  #     leafletProxy("map2")|>        
-  #       clearGroup("Buffers")|>
-  #       clearGroup("ERS gaps")|>
-  #       clearGroup("GRS gaps")|>
-  #       removeControl(layerId = "bufferLegend") |>
-  #       addPolygons(
-  #         data = hGapBuffer,
-  #         group = "Buffers",
-  #         color = "blue",
-  #         fillOpacity = 0.9
-  #       )|>
-  #       # ers gap map layer
-  #       addPolygons(
-  #         data = ersMap,
-  #         color = "grey",
-  #         opacity = 0.4,
-  #         popup = ~ECO_NAME, 
-  #         group = "ERS gaps",
-  #         fillOpacity = 0.9
-  #       ) |>
-  #       # grsex gap layer 
-  #       addPolygons(
-  #         data = grsMap,
-  #         color = "grey",
-  #         opacity = 0.2, 
-  #         group = "GRS gaps",
-  #         fillOpacity = 0.4) |>
-  #       # single legend for the GBIF features
-  #       addLegend(
-  #         position = "topright",
-  #         layerId = "bufferLegend",
-  #         colors = c("blue"),
-  #         labels = c("H"),
-  #         title = "Buffers",
-  #         opacity = 1,
-  #         group = "Buffers"
-  #       )
-  #   }else{
-  #     # update the map 
-  #     leafletProxy("map2")|>
-  #       clearGroup("Buffers")|>
-  #       clearGroup("ERS gaps")|>
-  #       clearGroup("GRS gaps")|>
-  #       removeControl(layerId = "bufferLegend") |>
-  #       removeControl(layerId = "ersGapLegend") |>
-  #       addPolygons(
-  #         data = hGapBuffer,
-  #         group = "Buffers",
-  #         color = "blue",
-  #         fillOpacity = 0.9
-  #       )|>
-  #       addPolygons(
-  #         data = gGapBuffer,
-  #         group = "Buffers",
-  #         color = "purple",
-  #         fillOpacity = 0.9
-  #       )|>
-  #       # ers gap map layer
-  #       addPolygons(
-  #         data = ersMap,
-  #         color = "grey",
-  #         opacity = 0.4,
-  #         popup = ~ECO_NAME, 
-  #         group = "ERS gaps",
-  #         fillOpacity = 0.4,
-  #         highlight = highlightOptions(
-  #           weight = 3,
-  #           fillOpacity = 0.4,
-  #           color = "black",
-  #           fillColor = "yellow",
-  #           opacity = 0.4,
-  #           bringToFront = TRUE,
-  #           sendToBack = TRUE),)|>
-  #       # grs gap map layer
-  #       addPolygons(
-  #         data = grsMap,
-  #         color = "grey",
-  #         opacity = 0.4, 
-  #         group = "GRS gaps",
-  #         fillOpacity = 0.8) |>
-  #       # legend
-  #       addLegend(
-  #         position = "topright",
-  #         layerId = "bufferLegend",
-  #         colors = c("blue", "purple"),
-  #         labels = c("Reference", "Germplasm"),
-  #         title = "Buffers",
-  #         opacity = 1,
-  #         group = "Buffers"
-  #       )|>
-  #       addLegend(
-  #         position = "topright",
-  #         layerId = "ersGapLegend",
-  #         labels = c("Uncollected Ecoregions"),
-  #         title = "ERSex Gap",
-  #         colors = c("grey"),
-  #         opacity = 1,
-  #         group = "ERS gaps"
-  #       )
-  #     # |>
-  #       # single legend for the GBIF features
-  #       # addLegend(
-  #       #   position = "topright",
-  #       #   colors = c("purple"),
-  #       #   labels = c("G"),
-  #       #   title = "Germplasm Records",
-  #       #   opacity = 1,
-  #       #   group = "G Buffers"
-  #       # )
-  #   }
-  # })
   
   
   ## generateGapSummary --- 
