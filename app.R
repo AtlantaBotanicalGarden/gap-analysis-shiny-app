@@ -23,6 +23,7 @@ library(shinyalert)
 library(plotly)
 library(sf)
 library(tidyterra)
+library(rhandsontable)
 
 # source modules --------------------------------------------------------
 lapply(list.files(
@@ -227,6 +228,12 @@ ui <- fluidPage(
           downloadButton("download2", "Download the Uploaded data"),
           card_title("Uploaded Records"),
           DTOutput("mapTableUpload"),
+        ),
+        nav_panel(
+          "example editable table",
+          downloadButton("download3", "Download the Uploaded data"),
+          card_title("Edit Uploaded Records"),
+          rHandsontableOutput("mapTableUploadEdit"),
         )
       )
     ), ## end data analysis page
@@ -577,6 +584,9 @@ server <- function(input, output) {
   })
 
   # Export the table from data processing page  -----------------------------------------------
+  
+
+
   # GBIF Data
   output$download1 <- downloadHandler(
     filename = function() {
@@ -600,7 +610,16 @@ server <- function(input, output) {
     }
   )
   
-  
+  output$download3 <- downloadHandler(
+    filename = function() {
+      # Use the selected dataset as the suggested file name
+      paste0(input$genusSelect,"_",input$speciesSelect, "_data.csv")
+    },
+    content = function(file) {
+      #Convert to R object before export
+      write.csv(hot_to_r(input$mapTableUploadEdit), file, row.names = FALSE,quote = TRUE)
+      }
+  )
 
   # read in the uploaded data -----------------------------------------------
   dataUpload <- reactive({
@@ -611,8 +630,25 @@ server <- function(input, output) {
            csv = vroom::vroom(input$upload$datapath, delim = ","),
            validate("Invalid file; Please upload a .csv file")
     )
- 
   })
+  # handson Table object 
+  reactTableUpload <- reactive({   
+    dataUpload() |>
+      rhandsontable(width = 1800, height = 200)|>
+      hot_cols(fixedColumnsLeft = 1, columnSorting = TRUE) |>
+      hot_rows(fixedRowsTop = 1)|>
+      hot_col("Current Germplasm Type", type = "dropdown", source = c("G","H"))|>
+      hot_col("Collection Date", type = "date")|>
+      hot_table(highlightCol = TRUE, 
+                highlightRow = TRUE)})
+  
+  
+  
+  
+  output$mapTableUploadEdit <- renderRHandsontable({reactTableUpload()})
+  
+  
+  
   output$validateColNames <- renderText({
     colNames <- names(dataUpload())
     vals <- c()
@@ -650,7 +686,7 @@ server <- function(input, output) {
                 dplyr::mutate(source = "GBIF",
                               "Accession Number" = as.character(`Accession Number`),
                               "Collection Date" = as.character(`Collection Date`)))
-    d2 <- try(dataUpload()|>
+    d2 <- try(rhandsontable::hot_to_r(input$mapTableUploadEdit)|>
                 dplyr::mutate(source = "upload",
                               "Accession Number" = as.character(`Accession Number`),
                               "Collection Date" = as.character(`Collection Date`)))
