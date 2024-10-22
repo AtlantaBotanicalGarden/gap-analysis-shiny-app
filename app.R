@@ -24,6 +24,7 @@ library(plotly)
 library(sf)
 library(tidyterra)
 library(rhandsontable)
+library(leaflet.extras)
 
 # source modules --------------------------------------------------------
 lapply(list.files(
@@ -73,6 +74,13 @@ map1 <-
                    "Topography",
                    "Imagery"),
     options = layersControlOptions(collapsed = FALSE)
+  )|>
+  addDrawToolbar(
+    position = "topleft",
+    polylineOptions = FALSE,
+    circleOptions = FALSE,
+    rectangleOptions = FALSE,
+    markerOptions = FALSE,
   )
 # 
 map2 <- leaflet::leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16))|>
@@ -194,7 +202,9 @@ ui <- fluidPage(
               "4. Remove Data from Map ",
               "Selecting a button will remove a specific layer from the map. The toggle buttons in the top left corner of the map can be uses to hide specific layers.",
               actionButton("removeGBIF", "Remove all GBIF data"),
-              actionButton("removeUpload", "Remove uploaded data")
+              actionButton("removeUpload", "Remove uploaded data"),
+              "Select button below to remove all point from within your drawn area",
+              actionButton("removeSelection", "Remove selection")
             ),
             accordion_panel(
               "5. Move data to Gap Analysis",
@@ -478,6 +488,7 @@ server <- function(input, output) {
     pointsVals <- gbifData() |>
       sf::st_as_sf(coords = c("Longitude","Latitude"), crs = 4326, remove = FALSE)|>
       dplyr::mutate(
+        index = dplyr::row_number(),
         popup = paste0("<strong>", as.character(`Taxon Name`),"</strong>", # needs to be text
                        "<br/><strong> Current Germplasm Type: </strong>", `Current Germplasm Type`,
                        "<br/><b>Collector Name:</b> ", Collector,
@@ -518,6 +529,7 @@ server <- function(input, output) {
     pointsVals2 <- dataUpload()|>
       sf::st_as_sf(coords = c("Longitude","Latitude"), crs = 4326, remove = FALSE)|>
       dplyr::mutate(
+        index = dplyr::row_number(),
         popup = paste0("<strong>", as.character(`Taxon Name`),"</strong>", # needs to be text
                        "<br/><strong> Type: </strong>", `Current Germplasm Type`,
                        "<br/><b>Collector Name:</b> ", Collector,
@@ -527,32 +539,16 @@ server <- function(input, output) {
           `Current Germplasm Type` == "G" ~ "#6300f0"
         )
       )
-    # spilt out the G and H points 
-    gVals2 <- pointsVals2 |>
-      dplyr::filter(`Current Germplasm Type` == "G")
-    hVals2 <- pointsVals2 |>
-      dplyr::filter(`Current Germplasm Type` == "H")
     # update the map 
     leafletProxy("map1")|>
-      setView(lng = pointsVals2$Longitude[1], lat = pointsVals2$Latitude[1], zoom = 6)|>
-      clearGroup(group = "Upload Dataset") |>
+      setView(lng = mean(pointsVals2$Longitude), lat = mean(pointsVals2$Latitude), zoom = 6)|>
       addCircleMarkers(
-        data = hVals2,
+        data = pointsVals2,
         color = ~color,
-        stroke = TRUE,
+        stroke = FALSE,
         fillOpacity = 0.9,
         popup = ~popup,
-        group = "Upload Dataset",
-        options = pathOptions(pane = "buffers")
-      ) |>
-      addCircleMarkers(
-        data = gVals2,
-        color = ~color,
-        stroke = TRUE,
-        fillOpacity = 0.9,
-        popup = ~popup,
-        group = "Upload Dataset",
-        options = pathOptions(pane = "buffers")
+        group = "Upload Dataset"
       ) |>
       # single legend for the GBIF features
       addLegend(
@@ -582,7 +578,88 @@ server <- function(input, output) {
       removeControl(layerId = "uploadlegend") # doesn't seem to be working at the moment. Mugh
     # not sure if I can remove the layer control element once it is added 
   })
-
+  # Create an empty reactive value to store selected points
+  selected_points <- reactiveVal()
+  
+  # Observe the drawn polygon and update selected points
+  observeEvent(input$map_draw_new_feature, {
+    if (input$map_draw_new_feature$type == "polygon") {
+      polygon <- input$map_draw_new_feature$geometry$coordinates[[1]]
+      
+      # Check if any initial points are within the polygon
+      selected_points(c(selected_points(), polygon))
+    }
+  })
+  # Observe the "Remove Selected Points" button and clear selected points
+  observeEvent(input$removeSelected, {
+    
+    d1 <- selected_points()
+    if("GBIF" %in%  d1$source){
+      gbifOnly <- d1 |>
+        dplyr::filter(source == "GBIF")|>
+        dplyr::select(index)|>
+        dplyr::pull()
+      
+      gbifData <- gbifData()|>
+        fitler(-gbifOlny)
+      
+      # update the map
+      leafletProxy("map1")|>
+        setView(lng = mean(gbifData$Longitude), lat = mean(gbifData$Latitude), zoom = 6)|>
+        addCircleMarkers(
+          data = gbifData,
+          color = ~color,
+          stroke = FALSE,
+          fillOpacity = 0.9,
+          popup = ~popup,
+          group = "GBIF") |>
+        # single legend for the GBIF features
+        addLegend(
+          position = "topright",
+          layerId = "GBIFlegend",
+          colors = c("#1184d4","#6300f0"),
+          labels = c("H","G"),
+          title = "GBIF Data",
+          opacity = 1,
+          group = "GBIF"
+        )
+      
+    }
+    if("upload" %in%  d1$source){
+      uploadOnly <- d1 |>
+        dplyr::filter(source == "upload")|>
+        dplyr::select(index)|>
+        dplyr::pull()
+      
+      dataUpload <- dataUpload()|>
+        fitler(-uploadOnly)
+      
+      
+      leafletProxy("map1")|>
+        setView(lng = mean(dataUpload$Longitude), lat = mean(dataUpload$Latitude), zoom = 6)|>
+        addCircleMarkers(
+          data = dataUpload,
+          color = ~color,
+          stroke = FALSE,
+          fillOpacity = 0.9,
+          popup = ~popup,
+          group = "Upload Dataset") |>
+        # single legend for the GBIF features
+        addLegend(
+          position = "topright",
+          layerId = "uploadlegend",
+          colors = c("#1184d4","#6300f0"),
+          labels = c("H","G"),
+          title = "Upload Dataset",
+          opacity = 1,
+          group = "Upload Dataset"
+        ) 
+      
+    }
+  })
+  
+  
+  
   # Export the table from data processing page  -----------------------------------------------
   
 
