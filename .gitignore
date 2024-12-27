@@ -2,4 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
-\appData\Plantae_Taxon.csv
+/appData/Plantae_Taxon.csv
+/dataToPreProcess
+dataToPreProcess/
