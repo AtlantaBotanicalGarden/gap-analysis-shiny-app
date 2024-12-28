@@ -15,7 +15,10 @@ tempTable <- read.csv("dataToPreProcess/Magnolia_acuminata_data.csv")|>
 
 names(tempTable) <- c(expectedNames ,"geometry")
 
-
 # load in land mask 
 land <- terra::vect("appData/water/land.gpkg")
+
+# Color Palettes --- H , G 
+uploadColor <-  c("#dfc27d", "#a6611a")
+gbifColor <- c("#80cdc1", "#018571")
 

@@ -101,9 +101,9 @@ server <- function(input, output) {
   # initalize the map -------------------------------------------------------
   output$map1 <- leaflet::renderLeaflet(generateMap1())
   
-  # GBIF accodion -----------------------------------------------------------
+  # GBIF accodion and data processing -----------------------------------------------------------
   ## taxon select --- 
-  # UI select Subspecies
+  ### UI select Subspecies
   output$speciesSelect = renderUI({
     # filter the data
     genusData <- gbifBackbone |>
@@ -113,7 +113,7 @@ server <- function(input, output) {
                 choices = sort(genusData$specificEpithet),
                 selected = )
   })
-  # UI select variaty/subspec
+  ### UI select variaty/subspec
   output$taxonRank = renderUI({
     # filter the data
     filteredData <- gbifBackbone |>
@@ -123,7 +123,7 @@ server <- function(input, output) {
     selectInput("taxonRank", "Select a taxon rank",
                 choices = filteredData$taxonRank, selected = )
   })
-  # UI select sub species feature
+  #### UI select sub species feature
   output$speciesInfraspecific = renderUI({
     # filter the data
     filteredData2 <- gbifBackbone |>
@@ -142,8 +142,7 @@ server <- function(input, output) {
     # pass the object to render
     name
   })
- 
-  # pull the gbif id from the selection
+  ## pull the gbif id from the selection
   output$gbiftaxonid <- renderText({
     f1 <- gbifBackbone |>
       dplyr::filter(genus == as.character(input$genusSelect)) |>
@@ -163,9 +162,7 @@ server <- function(input, output) {
     }
 
   })
- # 
-  ## Download data from GBIF -------------------------------------------------
-  # create an empty object 
+  ## Download data from GBIF 
   gbifData <- eventReactive(input$gbifPull, {
    # define all input variables 
    ## taxon key 
@@ -206,7 +203,7 @@ server <- function(input, output) {
    
  })
 
-  # Produce a text output to show the results 
+  ## Produce a text output to show the results 
   output$gbifDownloadSpecifics <- renderText({
     if(is.null(gbifData())){
       "There is no data available on GBIF for this species"
@@ -215,12 +212,10 @@ server <- function(input, output) {
     }
   })
  
-  # display GBIF data in the table 
+  ## display GBIF data in the table 
   output$mapTableGBIF <- renderDT(gbifData())
 
-  # Export the table from data processing page  -----------------------------------------------
-  # GBIF Data
-  ##  download GBIF Data to csv ----
+  ## GBIF Data
   output$download1 <- downloadHandler(
     filename = function() {
       # Use the selected dataset as the suggested file name
@@ -232,6 +227,10 @@ server <- function(input, output) {
     }
   )
 
+  
+  
+  
+  
   # uploaded dataset processing -----------------------------------------------
   dataUpload <- reactive({
     req(input$upload)
@@ -243,7 +242,7 @@ server <- function(input, output) {
     )
   })
 
-  ## testing column headers --------------------------------------------------
+  ## testing column headers 
   output$validateColNames <- renderText({
     colNames <- names(dataUpload())
     vals <- c()
@@ -261,8 +260,8 @@ server <- function(input, output) {
     }
   })
   
-  ## display in table -----
-  output$mapTableUpload <- renderDT(dataUpload())
+  ## display in table
+  output$mapTableUpload <- renderRHandsontable(dataUpload() |> rhandsontable())
   
   ## add a download functionality ---- 
   output$downloadUpload <- downloadHandler(
@@ -276,41 +275,109 @@ server <- function(input, output) {
     }
   )
   
-
-  # combined table---------------------------------------------
-  combined_data <- reactive({
-      d1 <- NA
-      d2 <- NA
-      d3 <- NA
-      outputTable <- data.frame()
-    # organize the gbif data
-    d1 <- try(gbifData()|>
-                dplyr::mutate(source = "GBIF",
-                              "Accession Number" = as.character(`Accession Number`),
-                              "Collection Date" = as.character(`Collection Date`)))
-    d2 <- try(dataUpload()|>
-                  dplyr::mutate(source = "upload",
-                                "Accession Number" = as.character(`Accession Number`),
-                                "Collection Date" = as.character(`Collection Date`)))
-    d3 <- try(dplyr::bind_rows(d1,d2))
-    # both datasets
-    if("data.frame" %in% class(d3)){
-      outputTable <- d3
-    }
-    # upload olny
-    if("data.frame" %in% class(d2) && !"data.frame" %in% class(d1)){
-      outputTable <- d2
-    }
-    #gbif only
-    if(!"data.frame" %in% class(d2) && "data.frame" %in% class(d1)){
-      outputTable <- d1
-    }
-    outputTable
+  ## add the uploaded data to the map 
+  observeEvent(input$mapTableUpload, {
+    # generate spatial data 
+    points <-createSpatialObject(input$mapTableUpload) |>
+      dplyr::mutate(
+        color = case_when(
+          `Current Germplasm Type` == "H" ~ uploadColor[1],
+          `Current Germplasm Type` == "G" ~ uploadColor[2]
+        )
+      )
+    # ideally this would be within the create SpatialObject call. 
+    labels <- lapply(points$popup, htmltools::HTML)
+    # produce map
+    leafletProxy("map1")|>
+      setView(lng = mean(points$Longitude), lat = mean(points$Latitude), zoom = 6)|>
+      addCircleMarkers(
+        data = points, 
+        layerId = ~`Accession Number`,
+        group = "upload",
+        radius = 4,
+        color = "white",
+        fillColor = ~color,
+        stroke = TRUE,
+        weight = 1,
+        fillOpacity = 1,
+        label = labels) 
+      
   })
+  
+  # Reactive values to store selected markers
+  selected <- reactiveValues(markers = NULL)
+  
+  
+  # INDIVIDUAL POINT SELECTION
+  # Observe marker clicks
+  observeEvent(input$map1_marker_click, {
+    click <- input$map1_marker_click
+    
+    # If marker is already selected, deselect it
+    if(click$id %in% selected$markers) {
+      selected$markers <- selected$markers[selected$markers != click$id]
+      leafletProxy("map1") %>%
+        leaflet::clearGroup("Upload Selection") |> 
+        addCircleMarkers(
+          data = points[points$`Accession Number` %in% selected$markers, ],
+          layerId = ~`Accession Number`,
+          radius = 4,
+          color = "red", 
+          fillOpacity = 0.8,
+          stroke = FALSE,
+          group = "Upload Selection"
+        )
+    } else {
+      # Otherwise, add it to selected markers
+      selected$markers <- c(selected$markers, click$id)
+      leafletProxy("map1") %>%
+        addCircleMarkers(
+          data = points[points$`Accession Number` == click$id, ],
+          layerId = ~`Accession Number`,
+          radius = 4,
+          color = "red", 
+          fillOpacity = 0.8,
+          stroke = FALSE,
+          group = "Upload Selection"
+        )
+    }
+  })
+  
+  # combined table---------------------------------------------
+  # combined_data <- reactive({
+  #     d1 <- NA
+  #     d2 <- NA
+  #     d3 <- NA
+  #     outputTable <- data.frame()
+  #   # organize the gbif data
+  #   d1 <- try(gbifData()|>
+  #               dplyr::mutate(source = "GBIF",
+  #                             "Accession Number" = as.character(`Accession Number`),
+  #                             "Collection Date" = as.character(`Collection Date`)))
+  #   d2 <- try(dataUpload()|>
+  #                 dplyr::mutate(source = "upload",
+  #                               "Accession Number" = as.character(`Accession Number`),
+  #                               "Collection Date" = as.character(`Collection Date`)))
+  #   d3 <- try(dplyr::bind_rows(d1,d2))
+  #   # both datasets
+  #   if("data.frame" %in% class(d3)){
+  #     outputTable <- d3
+  #   }
+  #   # upload olny
+  #   if("data.frame" %in% class(d2) && !"data.frame" %in% class(d1)){
+  #     outputTable <- d2
+  #   }
+  #   #gbif only
+  #   if(!"data.frame" %in% class(d2) && "data.frame" %in% class(d1)){
+  #     outputTable <- d1
+  #   }
+  #   outputTable
+  # })
 
   ## handson Table object ----
+  ### all map elements should be looking at this handson table. 
   reactTableUpload <- reactive({
-    
+    # empty condition to prevent the creation of the table before data is defined. 
     if(nrow(combined_data()) == 0){
       
     }else{
@@ -340,170 +407,178 @@ server <- function(input, output) {
     )
   
 
+ 
+  
+
+  # Reactive value to store selected points ---------------------------------
+  # selected_points <- reactiveVal()
+  
   # create the inital spatial data for map  -----------------------------------
-  observeEvent(input$mapTableUploadEdit, {
-    # remove any empty rows 
-    d1 <- hot_to_r(input$mapTableUploadEdit) |>
-      dplyr::filter(!is.na(Longitude))|>
-      dplyr::filter(!is.na(Latitude))
-    
-    # generate spatial data 
-    points <-createSpatialObject(d1)
-    
-    # produce map
-    leafletProxy("map1")|>
-      setView(lng = mean(points$Longitude), lat = mean(points$Latitude), zoom = 6)|>
-      addMarkers(
-        data = points,
-        group = "records",
-        popup = ~popup,
-        icon = leaflet::icons(~icon, iconWidth = 10, iconHeight = 10)
-      )|>
-      # single legend for the GBIF features
-      addLegend(
-        position = "topright",
-        layerId = "recordLegend",
-        colors = c("#1184d4","#6300f0"),
-        labels = c("H","G"),
-        title = "All Records",
-        opacity = 1,
-        group = "records"
-      )
-  })
+  # observeEvent(input$mapTableUploadEdit, {
+  #   # remove any empty rows 
+  #   d1 <- hot_to_r(input$mapTableUploadEdit) |>
+  #     dplyr::filter(!is.na(Longitude))|>
+  #     dplyr::filter(!is.na(Latitude))
+  #   
+  #   # generate spatial data 
+  #   points <-createSpatialObject(d1)
+  #   
+  #   # produce map
+  #   leafletProxy("map1")|>
+  #     setView(lng = mean(points$Longitude), lat = mean(points$Latitude), zoom = 6)|>
+  #     addMarkers(
+  #       data = points,
+  #       group = "records",
+  #       popup = ~popup,
+  #       ### this should enable hover over popups... make the description small and ensure the html is working 
+  #       # label = ~popup,
+  #       icon = leaflet::icons(~icon, iconWidth = 10, iconHeight = 10)
+  #     )|>
+  #     # single legend for the GBIF features
+  #     addLegend(
+  #       position = "topright",
+  #       layerId = "recordLegend",
+  #       colors = c("#1184d4","#6300f0"),
+  #       labels = c("H","G"),
+  #       title = "All Records",
+  #       opacity = 1,
+  #       group = "records"
+  #     )
+  # })
   
   ### the map does ok with updating after edits but added a button to force 
   # Edit spatial data on map based on the changes to the table -----------------------------------
-  observeEvent(input$updateCombinedTable, {
-    # remove any empty rows 
-    d1 <- hot_to_r(input$mapTableUploadEdit) |>
-      dplyr::filter(!is.na(Longitude))|>
-      dplyr::filter(!is.na(Latitude))
-    
-    # generate spatial data 
-    points <-createSpatialObject(d1)
-    
-    # produce map
-    leafletProxy("map1")|>
-      setView(lng = mean(points$Longitude), lat = mean(points$Latitude), zoom = 6)|>
-      clearMarkers() |>
-      addMarkers(
-        data = points,
-        group = "records",
-        popup = ~popup,
-        icon = leaflet::icons(~icon, iconWidth = 10, iconHeight = 10)
-      )|>
-      # single legend for the GBIF features
-      addLegend(
-        position = "topright",
-        layerId = "recordLegend",
-        colors = c("#1184d4","#6300f0"),
-        labels = c("H","G"),
-        title = "All Records",
-        opacity = 1,
-        group = "records"
-      )
-  })
-
-  # add red circles around the selected features 
-  selectedPoints <- eventReactive(input$map1_draw_new_feature, {
-      
-      # selected <- selected_points()
-      # existingSelection <- try(selectedPoints())
-      
-      # remove any empty rows 
-      d1 <- hot_to_r(input$mapTableUploadEdit) |>
-        dplyr::filter(!is.na(Longitude))|>
-        dplyr::filter(!is.na(Latitude))
-      
-      # generate spatial data
-      points <-createSpatialObject(d1)
-      
-      
-      # Extract polygon feature
-      feature <- input$map1_draw_new_feature
-      coords <- feature$geometry$coordinates[[1]]
-      selectionPoly <- st_polygon(list(matrix(unlist(coords), ncol = 2, byrow = TRUE)))
-      
-      # Find points within the polygon
-      pointsInPoly <- st_filter(points, selectionPoly)
-      
-      # subset selected points 
-      points2 <- points |>
-        dplyr::filter(`Accession Number` %in% pointsInPoly$`Accession Number`)
-      
-      # if(class(existingSelection)=="data.frame"){
-      #   output <- bind_rows(existingSelection, points2)
-      # }else{
-        output <- points2
-      # }
-      output 
-    })
-
-  
-  # # add selected points to map    
-  observeEvent(input$map1_draw_new_feature, {
-    leafletProxy("map1") %>%
-      # clearGroup("Selection") %>%
-      addCircleMarkers(
-        data = selectedPoints(),
-        group = "Selection",
-        color = "red",
-        radius = 8,
-        fillOpacity = 0.7
-      )
-  })
-
-  # remove selected points from the map   
-  observeEvent(input$removeSelection, {
-    # remove any empty rows 
-    d1 <- hot_to_r(input$mapTableUploadEdit) |>
-      dplyr::filter(!is.na(Longitude))|>
-      dplyr::filter(!is.na(Latitude))
-    
-    # generate spatial data
-    points <-createSpatialObject(d1)
-    
-    # remove data based on selected points 
-    p2 <- points |>
-      dplyr::filter(!c(index %in% selectedPoints()$index))
-
-    
-    # produce map
-    leafletProxy("map1")|>
-      setView(lng = mean(points$Longitude), lat = mean(points$Latitude), zoom = 6)|>
-      clearGroup("Selection") |>
-      clearMarkers() |>
-      addMarkers(
-        data = p2,
-        group = "records",
-        popup = ~popup,
-        icon = leaflet::icons(~icon, iconWidth = 10, iconHeight = 10)
-      )|>
-      # single legend for the GBIF features
-      addLegend(
-        position = "topright",
-        layerId = "recordLegend",
-        colors = c("#1184d4","#6300f0"),
-        labels = c("H","G"),
-        title = "All Records",
-        opacity = 1,
-        group = "records"
-      )
-    
-    # update the handson table with new values 
-    p3 <-d1 |>
-      dplyr::filter(!c(`Accession Number` %in% p2$`Accession Number`))|>
-      rhandsontable(width = "80%", height =  "500px") |>
-      hot_cols(columnSorting = TRUE) |>
-      hot_col("Current Germplasm Type", type = "dropdown", source = c("G","H"))|>
-      hot_col("Collection Date", type = "date")|>
-      hot_table(highlightCol = TRUE,
-                highlightRow = TRUE)
-    
-    # regenerate the table 
-    output$mapTableUploadEdit <- renderRHandsontable({p3})
-    
-  })
+  # observeEvent(input$updateCombinedTable, {
+  #   # remove any empty rows 
+  #   d1 <- hot_to_r(input$mapTableUploadEdit) |>
+  #     dplyr::filter(!is.na(Longitude))|>
+  #     dplyr::filter(!is.na(Latitude))
+  #   
+  #   # generate spatial data 
+  #   points <-createSpatialObject(d1)
+  #   
+  #   # produce map
+  #   leafletProxy("map1")|>
+  #     setView(lng = mean(points$Longitude), lat = mean(points$Latitude), zoom = 6)|>
+  #     clearMarkers() |>
+  #     addMarkers(
+  #       data = points,
+  #       group = "records",
+  #       popup = ~popup,
+  #       icon = leaflet::icons(~icon, iconWidth = 10, iconHeight = 10)
+  #     )|>
+  #     # single legend for the GBIF features
+  #     addLegend(
+  #       position = "topright",
+  #       layerId = "recordLegend",
+  #       colors = c("#1184d4","#6300f0"),
+  #       labels = c("H","G"),
+  #       title = "All Records",
+  #       opacity = 1,
+  #       group = "records"
+  #     )
+  # })
+  # 
+  # # add red circles around the selected features 
+  # selectedPoints <- eventReactive(input$map1_draw_new_feature, {
+  #     
+  #     # selected <- selected_points()
+  #     # existingSelection <- try(selectedPoints())
+  #     
+  #     # remove any empty rows 
+  #     d1 <- hot_to_r(input$mapTableUploadEdit) |>
+  #       dplyr::filter(!is.na(Longitude))|>
+  #       dplyr::filter(!is.na(Latitude))
+  #     
+  #     # generate spatial data
+  #     points <-createSpatialObject(d1)
+  #     
+  #     
+  #     # Extract polygon feature
+  #     feature <- input$map1_draw_new_feature
+  #     coords <- feature$geometry$coordinates[[1]]
+  #     selectionPoly <- st_polygon(list(matrix(unlist(coords), ncol = 2, byrow = TRUE)))
+  #     
+  #     # Find points within the polygon
+  #     pointsInPoly <- st_filter(points, selectionPoly)
+  #     
+  #     # subset selected points 
+  #     points2 <- points |>
+  #       dplyr::filter(`Accession Number` %in% pointsInPoly$`Accession Number`)
+  #     
+  #     # if(class(existingSelection)=="data.frame"){
+  #     #   output <- bind_rows(existingSelection, points2)
+  #     # }else{
+  #       output <- points2
+  #     # }
+  #     output 
+  #   })
+  # 
+  # 
+  # # # add selected points to map    
+  # observeEvent(input$map1_draw_new_feature, {
+  #   leafletProxy("map1") %>%
+  #     # clearGroup("Selection") %>%
+  #     addCircleMarkers(
+  #       data = selectedPoints(),
+  #       group = "Selection",
+  #       color = "red",
+  #       radius = 8,
+  #       fillOpacity = 0.7
+  #     )
+  # })
+  # 
+  # # remove selected points from the map   
+  # observeEvent(input$removeSelection, {
+  #   # remove any empty rows 
+  #   d1 <- hot_to_r(input$mapTableUploadEdit) |>
+  #     dplyr::filter(!is.na(Longitude))|>
+  #     dplyr::filter(!is.na(Latitude))
+  #   
+  #   # generate spatial data
+  #   points <-createSpatialObject(d1)
+  #   
+  #   # remove data based on selected points 
+  #   p2 <- points |>
+  #     dplyr::filter(!c(index %in% selectedPoints()$index))
+  # 
+  #   
+  #   # produce map
+  #   leafletProxy("map1")|>
+  #     setView(lng = mean(points$Longitude), lat = mean(points$Latitude), zoom = 6)|>
+  #     clearGroup("Selection") |>
+  #     clearMarkers() |>
+  #     addMarkers(
+  #       data = p2,
+  #       group = "records",
+  #       popup = ~popup,
+  #       icon = leaflet::icons(~icon, iconWidth = 10, iconHeight = 10)
+  #     )|>
+  #     # single legend for the GBIF features
+  #     addLegend(
+  #       position = "topright",
+  #       layerId = "recordLegend",
+  #       colors = c("#1184d4","#6300f0"),
+  #       labels = c("H","G"),
+  #       title = "All Records",
+  #       opacity = 1,
+  #       group = "records"
+  #     )
+  #   
+  #   # update the handson table with new values 
+  #   p3 <-d1 |>
+  #     dplyr::filter(!c(`Accession Number` %in% p2$`Accession Number`))|>
+  #     rhandsontable(width = "80%", height =  "500px") |>
+  #     hot_cols(columnSorting = TRUE) |>
+  #     hot_col("Current Germplasm Type", type = "dropdown", source = c("G","H"))|>
+  #     hot_col("Collection Date", type = "date")|>
+  #     hot_table(highlightCol = TRUE,
+  #               highlightRow = TRUE)
+  #   
+  #   # regenerate the table 
+  #   output$mapTableUploadEdit <- renderRHandsontable({p3})
+  #   
+  # })
   
   
 
@@ -931,6 +1006,9 @@ server <- function(input, output) {
   )
   output$gapAnalysisResults <- renderPlotly(gapAnalysisResultsFigure())
 
+  # test print  --------------------------------------------------------------
+
+  # output$testPrint <- renderText({ input$txt })
 }
 
 

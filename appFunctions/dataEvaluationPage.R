@@ -129,7 +129,7 @@ dataEvaluationPage <- function(){
           nav_panel( # view the material from the upload GBIF
             "Original Uploaded Records",
             shinycssloaders::withSpinner(
-            DTOutput("mapTableUpload")),
+              rHandsontableOutput("mapTableUpload")),
             downloadButton("downloadUpload", "Download the Uploaded data")
           ),
           nav_panel( # Editable data format, this is what will be displayed on the map and transfered to the gap analysis
