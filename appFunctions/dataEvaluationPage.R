@@ -104,7 +104,7 @@ dataEvaluationPage <- function(){
       # main panel features
 
     navset_card_tab(
-      height = 450,
+      height = 600,
       full_screen = TRUE,
       title = "Map and Data",
       layout_column_wrap(
@@ -114,27 +114,15 @@ dataEvaluationPage <- function(){
           leaflet::leafletOutput("map1"),
         ),
         navset_card_tab( # Editable data format, this is what will be displayed on the map and transfered to the gap analysis 
-          nav_panel(
-            title = "Editable/Map Data",
-            shinycssloaders::withSpinner(
-              rHandsontableOutput("mapTableUploadEdit")),
-          downloadButton("downloadCombined", "Download the full/edited data")
-          ),
           nav_panel( # this provides a chance to view the material specifically from GBIF
-            "Original Data from GBIF",
-            shinycssloaders::withSpinner(
-              DTOutput("mapTableGBIF")),
+            "GBIF Records",
+            shinycssloaders::withSpinner(rHandsontableOutput("mapTableGBIF")),
             downloadButton("download1", "Download the GBIF data")
           ),
           nav_panel( # view the material from the upload GBIF
-            "Original Uploaded Records",
-            shinycssloaders::withSpinner(
-              rHandsontableOutput("mapTableUpload")),
+            "Uploaded Records",
+            shinycssloaders::withSpinner(rHandsontableOutput("mapTableUpload")),
             downloadButton("downloadUpload", "Download the Uploaded data")
-          ),
-          nav_panel( # Editable data format, this is what will be displayed on the map and transfered to the gap analysis
-            title = "test print",
-            verbatimTextOutput("testPrint")
           )
         )
       ),

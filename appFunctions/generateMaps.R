@@ -9,11 +9,10 @@ generateMap1 <- function(){
     addProviderTiles("Esri.WorldImagery", group = "Imagery") |>  # layer control groups should not be set at the map proxy level as they will overwrite the existing element.
     addLayersControl(
       position = "topleft",
-      overlayGroups = c("upload",
+      overlayGroups = c("Upload",
                         "Upload Selection",
                         "GBIF",
-                        "GBIF Selection",
-                        "records", "selectedPts"),
+                        "GBIF Selection"),
       baseGroups = c("OpenStreetMap",
                      "Topography",
                      "Imagery"),
