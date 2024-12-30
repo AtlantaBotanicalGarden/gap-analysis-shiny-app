@@ -162,177 +162,205 @@ server <- function(input, output) {
     }
 
   })
-  ## Download data from GBIF 
-  gbifData <- eventReactive(input$gbifPull, {
-   # define all input variables 
-   ## taxon key 
-   if(as.character(input$taxonRank) == "species"){
-     f1 <- gbifBackbone |>
-       dplyr::filter(genus == as.character(input$genusSelect)) |>
-       dplyr::filter(specificEpithet == as.character(input$speciesSelect)) |>
-       dplyr::filter(taxonRank == as.character(input$taxonRank))
-     taxonID <- f1$taxonID[1]
-   }else{
-     f1 <- gbifBackbone |> 
-       dplyr::filter(taxonRank == as.character(input$taxonRank))|>
-       dplyr::filter(infraspecificEpithet == as.character(input$speciesInfraspecific)) 
-     taxonID <- f1$taxonID[1]
-   }
-   # synonym 
-   synonym <- input$allowSyn
-   # download limit
-   downloadLimit <- input$numberGBIFDownload
-   # issues 
-   issueCodes <- input$issueCodes
-   # year 
-   if(input$useYear){
-     year <- c(input$startYear, input$endYear)
-   }else{
-     year <- NULL
-   }
-   
-   
-   # define params
-   initialPull <- query_gbif_occ(taxonkey = taxonID,
-                  allow_synonyms_bool = synonym,
-                  limit = downloadLimit,
-                  year = year,
-                  # issues_not_allowed = issueCodes
-                  )
-   initialPull
-   
- })
-
-  ## Produce a text output to show the results 
-  output$gbifDownloadSpecifics <- renderText({
-    if(is.null(gbifData())){
-      "There is no data available on GBIF for this species"
-    }else{
-      paste0("The query returned ", nrow(gbifData()), " records.")
-    }
-  })
- 
-  ## display GBIF data in the table 
-  output$mapTableGBIF <- renderDT(gbifData())
-
-  ## GBIF Data
-  output$download1 <- downloadHandler(
-    filename = function() {
-      # Use the selected dataset as the suggested file name
-      paste0(input$genusSelect,"_",input$speciesSelect, "_data.csv")
-    },
-    content = function(file) {
-      # Write the dataset to the `file` that will be downloaded
-      write.csv(gbifData(), file, row.names = FALSE)
-    }
-  )
-  # add the data to the gbif table
-  output$mapTableGBIF <- renderRHandsontable(gbifData() |> rhandsontable())
   
   
-  # generate a reactive spatail data object
-  pointsG <- reactiveVal(NULL)
-  
-  observeEvent(input$mapTableGBIF, {
-    # generate spatial data 
-    tempPoints2 <-createSpatialObject(input$mapTableGBIF) |>
-      dplyr::mutate(
-        color = case_when(
-          `Current Germplasm Type` == "H" ~ gbifColor[1],
-          `Current Germplasm Type` == "G" ~ gbifColor[2]
-        )
-      )
-    pointsG(tempPoints2)
-  })
-  
-  
-  
-  
-  
-  # Observe changes to the spatial object and update the map
-  observe({
-    gbifPoints <- pointsG()
-    if (!is.null(gbifPoints)) {
-      # ideally this would be within the create SpatialObject call. 
-      labels <- lapply(gbifPoints$popup, htmltools::HTML)
-      # produce map
-      leafletProxy("map1")|>
-        setView(lng = mean(gbifPoints$Longitude), lat = mean(gbifPoints$Latitude), zoom = 6)|>
-        addCircleMarkers(
-          data = gbifPoints, 
-          layerId = ~`Accession Number`,
-          group = "GBIF",
-          radius = 4,
-          color = "white",
-          fillColor = ~color,
-          stroke = TRUE,
-          weight = 1,
-          fillOpacity = 1,
-          label = labels) 
-    }
-  })
-  
-  
-  
-  # # Reactive values to store selected markers
-  selectedGBIF <- reactiveValues(markers = NULL)
+  # Reactive value to store the uploaded data
+ #  gbifData <- reactiveVal(NULL)
+ #  
+ #  ## Download data from GBIF 
+ #  observeEvent(input$gbifPull, {
+ #   # define all input variables 
+ #   ## taxon key 
+ #   if(as.character(input$taxonRank) == "species"){
+ #     f1 <- gbifBackbone |>
+ #       dplyr::filter(genus == as.character(input$genusSelect)) |>
+ #       dplyr::filter(specificEpithet == as.character(input$speciesSelect)) |>
+ #       dplyr::filter(taxonRank == as.character(input$taxonRank))
+ #     taxonID <- f1$taxonID[1]
+ #   }else{
+ #     f1 <- gbifBackbone |> 
+ #       dplyr::filter(taxonRank == as.character(input$taxonRank))|>
+ #       dplyr::filter(infraspecificEpithet == as.character(input$speciesInfraspecific)) 
+ #     taxonID <- f1$taxonID[1]
+ #   }
+ #   # synonym 
+ #   synonym <- input$allowSyn
+ #   # download limit
+ #   downloadLimit <- input$numberGBIFDownload
+ #   # issues 
+ #   issueCodes <- input$issueCodes
+ #   # year 
+ #   if(input$useYear){
+ #     year <- c(input$startYear, input$endYear)
+ #   }else{
+ #     year <- NULL
+ #   }
+ #   
+ #   
+ #   # define params
+ #   initialPull <- query_gbif_occ(taxonkey = taxonID,
+ #                  allow_synonyms_bool = synonym,
+ #                  limit = downloadLimit,
+ #                  year = year,
+ #                  # issues_not_allowed = issueCodes
+ #                  )
+ #   gbifData(initialPull)
+ # })
+ # 
+ #  ## Produce a text output to show the results 
+ #  output$gbifDownloadSpecifics <- renderText({
+ #    if(is.null(gbifData())){
+ #      "There is no data available on GBIF for this species"
+ #    }else{
+ #      paste0("The query returned ", nrow(gbifData()), " records.")
+ #    }
+ #  })
+ # 
+ # 
+ #  ## GBIF Data
+ #  output$download1 <- downloadHandler(
+ #    filename = function() {
+ #      # Use the selected dataset as the suggested file name
+ #      paste0(input$genusSelect,"_",input$speciesSelect, "_data.csv")
+ #    },
+ #    content = function(file) {
+ #      # Write the dataset to the `file` that will be downloaded
+ #      write.csv(gbifData(), file, row.names = FALSE)
+ #    }
+ #  )
+ #  
+ #  ## display in table
+ #  # Render the rhandsontable (only if data is available)
+ #  output$mapTableGBIF <- renderRHandsontable({
+ #    req(gbifData()) # Require data before rendering
+ #    rhandsontable(gbifData())
+ #  })
+ #  
+ #  # Render the map (only if data is available)
+ #  observe({
+ #    req(gbifData()) # Require data before rendering
+ #    # generate point objects
+ #    gbifPoints <- createSpatialObject(gbifData())|>
+ #      dplyr::mutate(
+ #        color = case_when(
+ #          `Current Germplasm Type` == "H" ~ gbifColor[1],
+ #          `Current Germplasm Type` == "G" ~ gbifColor[2]
+ #        )
+ #      )
+ #    labels <- lapply(gbifPoints$popup, htmltools::HTML)
+ # 
+ #    # update map
+ #    leafletProxy("map1")|>
+ #      setView(lng = mean(gbifPoints$Longitude), lat = mean(gbifPoints$Latitude), zoom = 6)|>
+ #      addCircleMarkers(
+ #        data = gbifPoints,
+ #        layerId = ~`Accession Number`,
+ #        group = "GBIF",
+ #        radius = 4,
+ #        color = "white",
+ #        fillColor = ~color,
+ #        stroke = TRUE,
+ #        weight = 1,
+ #        fillOpacity = 1,
+ #        label = labels
+ #      )
+ #  })
+ #  # 
+ #  # Observe changes in the table
+ #  observeEvent(input$mapTableGBIF, {
+ #    gbifData(hot_to_r(input$mapTableGBIF))
+ # 
+ #    gbifPoints <- createSpatialObject(gbifData())|>
+ #      dplyr::mutate(
+ #        color = case_when(
+ #          `Current Germplasm Type` == "H" ~ gbifColor[1],
+ #          `Current Germplasm Type` == "G" ~ gbifColor[2]
+ #        )
+ #      )
+ #    labels <- lapply(gbifPoints$popup, htmltools::HTML)
+ # 
+ #    # update map
+ #    leafletProxy("map1")|>
+ #      setView(lng = mean(gbifPoints$Longitude), lat = mean(gbifPoints$Latitude), zoom = 6)|>
+ #      addCircleMarkers(
+ #        data = gbifPoints,
+ #        layerId = ~`Accession Number`,
+ #        group = "GBIF",
+ #        radius = 4,
+ #        color = "white",
+ #        fillColor = ~color,
+ #        stroke = TRUE,
+ #        weight = 1,
+ #        fillOpacity = 1,
+ #        label = labels
+ #      )
+ #  })
+ #  # Reactive values to store selected markers
+ #  selectedGBIF <- reactiveValues(markers = NULL)
 
   # INDIVIDUAL POINT SELECTION
   # Observe marker clicks
-  observeEvent(input$map1_marker_click, {
-    click <- input$map1_marker_click
-
-    # print(click$id)
-    # print(click$group)
-    # define local varaible
-    gbifPoints <- pointsG()
-
-    if(click$group == "GBIF"){
-      # add it to selected markers
-      selectedGBIF$markers <- c(selectedGBIF$markers, click$id)
-      # edit map
-      leafletProxy("map1") %>%
-        addCircleMarkers(
-          data = gbifPoints |>
-            dplyr::filter(`Accession Number` == click$id) ,
-          layerId = ~`Accession Number`,
-          radius = 4,
-          color = "red",
-          fillOpacity = 0.8,
-          stroke = FALSE,
-          group = "GBIF Selection"
-        )
-    }
-    if(click$group == "GBIF Selection"){
-      # remove the item from selection
-      selectedGBIF$markers <- selectedGBIF$markers[selectedGBIF$markers != click$id]
-      # update the map
-      leafletProxy("map1") %>%
-        leaflet::clearGroup("GBIF Selection") |>
-        addCircleMarkers(
-          data = selectedGBIF[selectedGBIF$`Accession Number` %in% selectedGBIF$markers, ],
-          layerId = ~`Accession Number`,
-          radius = 4,
-          color = "red",
-          fillOpacity = 0.8,
-          stroke = FALSE,
-          group = "GBIF Selection"
-        )
-    }
-  })
+  # observeEvent(input$map1_marker_click, {
+  #   click <- input$map1_marker_click
+  #   # regenerateing the spatial data to try to resolve the removal of the inital layer on select 
+  #   gbifData(hot_to_r(input$mapTableGBIF))
+  #   
+  #   gbifPoints2 <- createSpatialObject(gbifData())|>
+  #     dplyr::mutate(
+  #       color = case_when(
+  #         `Current Germplasm Type` == "H" ~ gbifColor[1],
+  #         `Current Germplasm Type` == "G" ~ gbifColor[2]
+  #       )
+  #     )
+  #   labels <- lapply(gbifPoints2$popup, htmltools::HTML)
+  #   
+  #   if(click$group == "GBIF"){
+  #     # add it to selected markers
+  #     selectedGBIF$markers <- c(selectedGBIF$markers, click$id)
+  #     # edit map
+  #     leafletProxy("map1") %>%
+  #       addCircleMarkers(
+  #         data = gbifPoints2[gbifPoints2$`Accession Number` == click$id, ],
+  #         layerId = ~`Accession Number`,
+  #         radius = 4,
+  #         color = "red",
+  #         fillOpacity = 0.8,
+  #         stroke = FALSE,
+  #         group = "GBIF Selection"
+  #       )
+  #   }
+  #   if(click$group == "GBIF Selection"){
+  #     # remove the item from selection
+  #     selectedGBIF$markers <- selectedGBIF$markers[selectedGBIF$markers != click$id]
+  #     # update the map
+  #     leafletProxy("map1") %>%
+  #       leaflet::clearGroup("GBIF Selection") |>
+  #       addCircleMarkers(
+  #         data = gbifPoints2[gbifPoints2$`Accession Number` %in% selectedGBIF$markers, ],
+  #         layerId = ~`Accession Number`,
+  #         radius = 4,
+  #         color = "red",
+  #         fillOpacity = 0.8,
+  #         stroke = FALSE,
+  #         group = "GBIF Selection"
+  #       )
+  #   }
+  # })
   
   
   # uploaded dataset processing -----------------------------------------------
-  dataUpload <- reactive({
-    req(input$upload)
-
-    ext <- tools::file_ext(input$upload$name)
-    switch(ext,
-           csv = vroom::vroom(input$upload$datapath, delim = ","),
-           validate("Invalid file; Please upload a .csv file")
-    )
-  })
-
+  
+  ## add a download functionality
+  output$downloadUpload <- downloadHandler(
+    filename = function() {
+      # Use the selected dataset as the suggested file name
+      paste0(input$genusSelect,"_",input$speciesSelect, "_uploaded_data.csv")
+    },
+    content = function(file) {
+      # Write the dataset to the `file` that will be downloaded
+      write.csv(dataUpload(), file, row.names = FALSE)
+    }
+  )
   ## testing column headers 
   output$validateColNames <- renderText({
     colNames <- names(dataUpload())
@@ -350,94 +378,102 @@ server <- function(input, output) {
       print(nonMatchedNames)
     }
   })
+  # Reactive value to store the uploaded data
+  dataUpload <- reactiveVal(NULL)
+  
+  observeEvent(input$upload, {
+    inFile <- input$upload
+    if(is.null(inFile)){
+      return(NULL)
+    }
+    # Read the uploaded CSV file
+    uploaded_data <- vroom::vroom(inFile$datapath, delim = ",")
+    # Update the reactive value with the uploaded data
+    dataUpload(uploaded_data)    
+  })
   
   ## display in table
-  output$mapTableUpload <- renderRHandsontable(dataUpload() |> rhandsontable())
+  # Render the rhandsontable (only if data is available)
+  output$mapTableUpload <- renderRHandsontable({
+    req(dataUpload()) # Require data before rendering
+    rhandsontable(dataUpload())
+  })
   
-  ## add a download functionality
-  output$downloadUpload <- downloadHandler(
-    filename = function() {
-      # Use the selected dataset as the suggested file name
-      paste0(input$genusSelect,"_",input$speciesSelect, "_uploaded_data.csv")
-    },
-    content = function(file) {
-      # Write the dataset to the `file` that will be downloaded
-      write.csv(dataUpload(), file, row.names = FALSE)
-    }
-  )
-  # generate a reactive spatail data object
-  points <- reactiveVal(NULL)
+  # Render the map (only if data is available)
+  observe({
+    req(dataUpload()) # Require data before rendering
+    # generate point objects 
+    uploadPoints <- createSpatialObject(dataUpload())|>
+          dplyr::mutate(
+            color = case_when(
+              `Current Germplasm Type` == "H" ~ uploadColor[1],
+              `Current Germplasm Type` == "G" ~ uploadColor[2]
+            )
+          )
+    labels <- lapply(uploadPoints$popup, htmltools::HTML)
+    
+    # update map 
+    leafletProxy("map1")|>
+      setView(lng = mean(uploadPoints$Longitude), lat = mean(uploadPoints$Latitude), zoom = 6)|>
+      addCircleMarkers(
+        data = uploadPoints,
+        layerId = ~`Accession Number`,
+        group = "Upload",
+        radius = 4,
+        color = "white",
+        fillColor = ~color,
+        stroke = TRUE,
+        weight = 1,
+        fillOpacity = 1,
+        label = labels
+        )
+  })
   
-  
-  ## This is for table upload 
+  # Observe changes in the table
   observeEvent(input$mapTableUpload, {
-    # generate spatial data 
-    tempPoints1 <-createSpatialObject(input$mapTableUpload) |>
+    dataUpload(hot_to_r(input$mapTableUpload))
+    
+    uploadPoints <- createSpatialObject(dataUpload())|>
       dplyr::mutate(
         color = case_when(
           `Current Germplasm Type` == "H" ~ uploadColor[1],
           `Current Germplasm Type` == "G" ~ uploadColor[2]
         )
       )
-    points(tempPoints1)
+    labels <- lapply(uploadPoints$popup, htmltools::HTML)
+    
+    # update map 
+    leafletProxy("map1")|>
+      setView(lng = mean(uploadPoints$Longitude), lat = mean(uploadPoints$Latitude), zoom = 6)|>
+      addCircleMarkers(
+        data = uploadPoints,
+        layerId = ~`Accession Number`,
+        group = "Upload",
+        radius = 4,
+        color = "white",
+        fillColor = ~color,
+        stroke = TRUE,
+        weight = 1,
+        fillOpacity = 1,
+        label = labels
+      )
   })
-  
-  # updata point object base on button click 
-  observeEvent(input$updateCombinedTable, {
-    uploadData <- points()
-    if(!is.null(uploadData)){
-      # generate spatial data 
-      tempPoints1 <-createSpatialObject(input$mapTableUpload) |>
-        dplyr::mutate(
-          color = case_when(
-            `Current Germplasm Type` == "H" ~ uploadColor[1],
-            `Current Germplasm Type` == "G" ~ uploadColor[2]
-          )
-        )
-      points(tempPoints1)
-    }
-  })
-  
-  
-  # Observe changes to the spatial object and update the map
-  observe({
-    uploadPoints <- points()
-    if (!is.null(uploadPoints)) {
-      # ideally this would be within the create SpatialObject call. 
-      labels <- lapply(uploadPoints$popup, htmltools::HTML)
-      # produce map
-      leafletProxy("map1")|>
-        setView(lng = mean(uploadPoints$Longitude), lat = mean(uploadPoints$Latitude), zoom = 6)|>
-        addCircleMarkers(
-          data = uploadPoints, 
-          layerId = ~`Accession Number`,
-          group = "Upload",
-          radius = 4,
-          color = "white",
-          fillColor = ~color,
-          stroke = TRUE,
-          weight = 1,
-          fillOpacity = 1,
-          label = labels) 
-    }
-  })
-  
   # Reactive values to store selected markers
   selectedUpload <- reactiveValues(markers = NULL)
-  
+
   # INDIVIDUAL POINT SELECTION
   # Observe marker clicks
   observeEvent(input$map1_marker_click, {
     click <- input$map1_marker_click
-    
+
     print(click$id)
     print(click$group)
-    # define local varaible 
-    uploadPoints <- points()
+    # define local varaible
+    uploadPoints <- dataUpload()
     if(click$group == "Upload"){
       # add it to selected markers
       selectedUpload$markers <- c(selectedUpload$markers, click$id)
-      # edit map  
+      # edit map
       leafletProxy("map1") %>%
           addCircleMarkers(
             data = uploadPoints |>
@@ -453,7 +489,7 @@ server <- function(input, output) {
     if(click$group == "Upload Selection"){
       # remove the item from selection
       selectedUpload$markers <- selectedUpload$markers[selectedUpload$markers != click$id]
-      # update the map 
+      # update the map
       leafletProxy("map1") %>%
         leaflet::clearGroup("Upload Selection") |>
         addCircleMarkers(
@@ -467,8 +503,29 @@ server <- function(input, output) {
         )
     }
   })
+
+  
   
 
+  # remove selected features  -----------------------------------------------
+  observeEvent(input$removeSelection, {
+
+    print(selectedUpload$markers)
+    # Remove selected points from the table data
+    dataUpload(dataUpload()[-c(selectedUpload$markers), ])
+
+    # rerender table
+    output$mapTableUpload <- renderRHandsontable({
+      req(dataUpload()) # Require data before rendering
+      rhandsontable(dataUpload())
+    })
+    
+    # Remove all markers from the "selected" group on the map
+    leafletProxy("map1") %>%
+      clearGroup("Upload Selection")
+  })
+  
+  
   
   
   # combined table---------------------------------------------
@@ -501,7 +558,10 @@ server <- function(input, output) {
   #   }
   #   outputTable
   # })
-
+  # 
+  
+  
+  
 
   # Gap Analysis Page  ------------------------------------------------------
   ## generate the gapAnalysus input dataset ----

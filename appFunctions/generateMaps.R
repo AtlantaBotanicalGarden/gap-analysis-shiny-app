@@ -25,7 +25,12 @@ generateMap1 <- function(){
 createSpatialObject <- function(table){
   # convert from rhandson to r 
   # remove any empty rows 
-  data <- hot_to_r(table) |>
+  # data <- hot_to_r(table) |>
+  #   dplyr::filter(!is.na(Longitude))|>
+  #   dplyr::filter(!is.na(Latitude))
+  
+  # testing 
+  data <- table |>
     dplyr::filter(!is.na(Longitude))|>
     dplyr::filter(!is.na(Latitude))
   
@@ -40,6 +45,7 @@ createSpatialObject <- function(table){
                      "<br/><b>Collector Name:</b> ", Collector,
                      "<br/><b>Locality Description):</b> ", Locality)
     )
+  
   return(points)
 }
 
