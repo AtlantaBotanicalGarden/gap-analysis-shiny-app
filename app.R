@@ -231,7 +231,7 @@ server <- function(input, output) {
   
   
   # generate a reactive spatail data object
-  points1 <- reactiveVal(NULL)
+  pointsG <- reactiveVal(NULL)
   
   observeEvent(input$mapTableGBIF, {
     # generate spatial data 
@@ -242,55 +242,59 @@ server <- function(input, output) {
           `Current Germplasm Type` == "G" ~ gbifColor[2]
         )
       )
-    points1(tempPoints2)
+    pointsG(tempPoints2)
   })
   
   
   
   
-    # Observe changes to the spatial object and update the map
+  
+  # Observe changes to the spatial object and update the map
   observe({
-    gbifPoints <- points1()
-    if (!is.null(gbifPoints)){
+    gbifPoints <- pointsG()
+    if (!is.null(gbifPoints)) {
       # ideally this would be within the create SpatialObject call. 
       labels <- lapply(gbifPoints$popup, htmltools::HTML)
-    # produce map
-    leafletProxy("map1")|>
-      setView(lng = mean(gbifPoints$Longitude), lat = mean(gbifPoints$Latitude), zoom = 6)|>
-      addCircleMarkers(
-        data = gbifPoints, 
-        layerId = ~`Accession Number`,
-        group = "GBIF",
-        radius = 4,
-        color = "white",
-        fillColor = ~color,
-        stroke = TRUE,
-        weight = 1,
-        fillOpacity = 1,
-        label = labels) 
+      # produce map
+      leafletProxy("map1")|>
+        setView(lng = mean(gbifPoints$Longitude), lat = mean(gbifPoints$Latitude), zoom = 6)|>
+        addCircleMarkers(
+          data = gbifPoints, 
+          layerId = ~`Accession Number`,
+          group = "GBIF",
+          radius = 4,
+          color = "white",
+          fillColor = ~color,
+          stroke = TRUE,
+          weight = 1,
+          fillOpacity = 1,
+          label = labels) 
     }
   })
-  # Reactive values to store selected markers
+  
+  
+  
+  # # Reactive values to store selected markers
   selectedGBIF <- reactiveValues(markers = NULL)
-  
-  
+
   # INDIVIDUAL POINT SELECTION
   # Observe marker clicks
   observeEvent(input$map1_marker_click, {
     click <- input$map1_marker_click
-    
-    # define local varaible 
-    gbifPoints <- points1()
 
-    # If marker is already selected, deselect it
+    # print(click$id)
+    # print(click$group)
+    # define local varaible
+    gbifPoints <- pointsG()
+
     if(click$group == "GBIF"){
       # add it to selected markers
       selectedGBIF$markers <- c(selectedGBIF$markers, click$id)
-      # update the map 
+      # edit map
       leafletProxy("map1") %>%
         addCircleMarkers(
           data = gbifPoints |>
-            dplyr::filter(`Accession Number` == click$id),
+            dplyr::filter(`Accession Number` == click$id) ,
           layerId = ~`Accession Number`,
           radius = 4,
           color = "red",
@@ -299,15 +303,14 @@ server <- function(input, output) {
           group = "GBIF Selection"
         )
     }
-    
     if(click$group == "GBIF Selection"){
-      # remove from selection list
+      # remove the item from selection
       selectedGBIF$markers <- selectedGBIF$markers[selectedGBIF$markers != click$id]
       # update the map
       leafletProxy("map1") %>%
         leaflet::clearGroup("GBIF Selection") |>
         addCircleMarkers(
-          data = gbifPoints[gbifPoints$`Accession Number` %in% selectedGBIF$markers, ],
+          data = selectedGBIF[selectedGBIF$`Accession Number` %in% selectedGBIF$markers, ],
           layerId = ~`Accession Number`,
           radius = 4,
           color = "red",
@@ -365,6 +368,8 @@ server <- function(input, output) {
   # generate a reactive spatail data object
   points <- reactiveVal(NULL)
   
+  
+  ## This is for table upload 
   observeEvent(input$mapTableUpload, {
     # generate spatial data 
     tempPoints1 <-createSpatialObject(input$mapTableUpload) |>
@@ -376,6 +381,23 @@ server <- function(input, output) {
       )
     points(tempPoints1)
   })
+  
+  # updata point object base on button click 
+  observeEvent(input$updateCombinedTable, {
+    uploadData <- points()
+    if(!is.null(uploadData)){
+      # generate spatial data 
+      tempPoints1 <-createSpatialObject(input$mapTableUpload) |>
+        dplyr::mutate(
+          color = case_when(
+            `Current Germplasm Type` == "H" ~ uploadColor[1],
+            `Current Germplasm Type` == "G" ~ uploadColor[2]
+          )
+        )
+      points(tempPoints1)
+    }
+  })
+  
   
   # Observe changes to the spatial object and update the map
   observe({
@@ -399,7 +421,6 @@ server <- function(input, output) {
           label = labels) 
     }
   })
-  
   
   # Reactive values to store selected markers
   selectedUpload <- reactiveValues(markers = NULL)
@@ -447,7 +468,7 @@ server <- function(input, output) {
     }
   })
   
-  
+
   
   
   # combined table---------------------------------------------
