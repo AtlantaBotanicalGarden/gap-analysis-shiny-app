@@ -62,6 +62,7 @@ ui <- fluidPage(
   ## navbarPage --------------------------------------------------------------
   ### primary container for the application.
   page_navbar(
+    id = "main_navbar",
     title = "Gap Analysis and Metacollection Management",
     bg ="#52b788",
     window_title = "GAMMA Tool",
@@ -91,7 +92,7 @@ ui <- fluidPage(
   
 
 # server ----------------------------------------------------------------
-server <- function(input, output) {
+server <- function(input, output, session) {
   #
   # the server elements for fit as well inside the functions. This probably has
   # to do with the namespace and modules... leave it be for now and look to organize 
@@ -302,17 +303,22 @@ server <- function(input, output) {
   # Observe marker clicks
   observeEvent(input$map1_marker_click, {
     click <- input$map1_marker_click
-    # regenerateing the spatial data to try to resolve the removal of the inital layer on select
-    gbifData(hot_to_r(input$mapTableGBIF))
-
-    gbifPoints2 <- createSpatialObject(gbifData())|>
-      dplyr::mutate(
-        color = case_when(
-          `Current Germplasm Type` == "H" ~ gbifColor[1],
-          `Current Germplasm Type` == "G" ~ gbifColor[2]
+    
+    # need a condition to prevent triggering from the upload selection
+    if(click$group == "GBIF" || click$group == "GBIF Selection"){
+      # # regenerateing the spatial data to try to resolve the removal of the inital layer on select
+      gbifData(hot_to_r(input$mapTableGBIF))
+      
+      gbifPoints <- createSpatialObject(gbifData())|>
+        dplyr::mutate(
+          color = case_when(
+            `Current Germplasm Type` == "H" ~ gbifColor[1],
+            `Current Germplasm Type` == "G" ~ gbifColor[2]
+          )
         )
-      )
-    labels <- lapply(gbifPoints2$popup, htmltools::HTML)
+      labels <- lapply(gbifPoints$popup, htmltools::HTML)
+    }
+ 
 
     if(click$group == "GBIF"){
       # add it to selected markers
@@ -320,7 +326,7 @@ server <- function(input, output) {
       # edit map
       leafletProxy("map1") %>%
         addCircleMarkers(
-          data = gbifPoints2[gbifPoints2$`Accession Number` == click$id, ],
+          data = gbifPoints[gbifPoints$`Accession Number` == click$id, ],
           layerId = ~`Accession Number`,
           radius = 4,
           color = "red",
@@ -336,7 +342,7 @@ server <- function(input, output) {
       leafletProxy("map1") %>%
         leaflet::clearGroup("GBIF Selection") |>
         addCircleMarkers(
-          data = gbifPoints2[gbifPoints2$`Accession Number` %in% selectedGBIF$markers, ],
+          data = gbifPoints[gbifPoints$`Accession Number` %in% selectedGBIF$markers, ],
           layerId = ~`Accession Number`,
           radius = 4,
           color = "red",
@@ -509,54 +515,108 @@ server <- function(input, output) {
   # combined table---------------------------------------------
   ## take the selected data from both groups and use that to filter the two dataframes 
   
-  gapAnalysisData <- reactive(NULL)
+  combined_data <- reactiveVal(NULL)
   
-  observeEvent(input$compileDatasets, {    # attempt to pull the table data 
-    d1 <- NA
-    d2 <- NA
-    d3 <- NA
-    outputTable <- data.frame()
-    # organize the gbif data
-    d1 <- try(gbifData()|>
-                dplyr::mutate(source = "GBIF",
-                              "Accession Number" = as.character(`Accession Number`),
-                              "Collection Date" = as.character(`Collection Date`)))
-    d2 <- try(dataUpload()|>
-                  dplyr::mutate(source = "upload",
-                                "Accession Number" = as.character(`Accession Number`),
-                                "Collection Date" = as.character(`Collection Date`)))
-    d3 <- try(dplyr::bind_rows(d1,d2))
-    # both datasets
-    if("data.frame" %in% class(d3)){
-      outputTable <- d3
+  
+  # Combine the data sets only when the button is clicked
+  observeEvent(input$compileDatasets, {
+    if (!is.null(gbifData()) && !is.null(dataUpload())) {
+      # Both exist: Try to combine
+      tryCatch({
+        combined <- bind_rows(gbifData(), dataUpload())
+      }, error = function(e) {
+        showNotification(paste("Error combining data:", e$message), type = "error")
+        NULL
+      })
+    } else if (!is.null(gbifData())) {
+      # Only data1 exists
+      combined <- gbifData()
+    } else if (!is.null(dataUpload())) {
+      # Only data2 exists
+      combined <- dataUpload()
+    } else {
+      # Neither exists
+      NULL
     }
-    # upload olny
-    if(is.null(gbifData())){
-      outputTable <- d2
+    # returned a filtered dataset based on the map selection 
+    if(!is.null(combined)){
+      ## add the filtering data set back in 
+      uploadSelection <- selectedUpload$markers
+      gbifSelection <- selectedGBIF$markers
+      if(!is.null(uploadSelection) && !is.null(gbifSelection)){
+        selectAccession <- c(uploadSelection,gbifSelection )
+        # drop accessions  
+        combined2 <- combined[!combined$`Accession Number`%in% selectAccession, ]
+        # generate object 
+        combined_data(combined2)
+      }else if(is.null(uploadSelection) && !is.null(gbifSelection)){
+        # drop accessions  
+        combined2 <- combined[!combined$`Accession Number`%in% gbifSelection, ]
+        # generate object 
+        combined_data(combined2)
+      }else if(!is.null(uploadSelection) && is.null(gbifSelection)){
+        # drop accessions  
+        combined2 <- combined[!combined$`Accession Number`%in% uploadSelection, ]
+        # generate object 
+        combined_data(combined2)
+      }else{
+        combined_data(combined)
+      }
+
+      # generate object 
+      combined_data(combined2)
+      print(combined_data)
+    }else{
+      combined_data(combined)
     }
-    #gbif only
-    if(is.null(dataUpload())){
-      outputTable <- d1
-    }
-    outputTable
-    # print(outputTable)
-    
-    # pull the position ids from the map selections 
-    ## upload 
-    uploadSelection <- selectedUpload$markers
-    if(length(uploadSelection) > 0){
-      outputTable <- outputTable[!outputTable$`Accession Number`%in% uploadSelection, ]
-    }
-    ## gbif 
-    gbifSelection <- selectedGBIF$markers 
-    if(length(gbifSelection)>0){
-      outputTable <- outputTable[!outputTable$`Accession Number`%in% gbifSelection, ]
-    }
-    
-    
-    print(nrow(outputTable))
-    
   })
+  # develop the popup 
+  observeEvent(input$compileDatasets, {
+    # print(combined_data())
+    Sys.sleep(1)
+    ## show the popup selection
+    showModal(
+      modalDialog(
+        title = "Choose an Action",
+        "What would you like to do?",
+        footer = tagList(
+          downloadButton("download_csv", "Download your data"),
+          actionButton("continue", "Continue to gap analysis"),
+          actionButton("return", "Return to data evaluation")
+        ),
+        size = "l",
+        easyClose = FALSE
+      )
+    )
+  })
+  
+  
+  # Switch to Page 2 when "Continue" is clicked
+  observeEvent(input$continue, {
+    updateNavbarPage(session, "main_navbar", selected = "Gap Analysis")
+    removeModal() # Remove the modal dialog
+  })
+  # return to Page 1 when "Return" is clicked
+  observeEvent(input$return, {
+    removeModal() # Remove the modal dialog
+  })
+  
+  # download the combined data 
+  output$download_csv <- downloadHandler(
+    filename = function() {
+      # Use the selected dataset as the suggested file name
+      taxon <- combined_data()$`Taxon Name`
+      paste0(taxon,"_combined_data.csv")
+    },
+    content = function(file2) {
+      export <- combined_data()
+      print(nrow(export))
+      # Write the dataset to the `file` that will be downloaded
+      write.csv(export, file2, row.names = FALSE)
+    }
+  )
+  
+  
   
   # Gap Analysis Page  ------------------------------------------------------
   ## generate the gapAnalysus input dataset ----
@@ -568,7 +628,7 @@ server <- function(input, output) {
   # generate dataframe object 
   observeEvent(input$compileDatasets, {
     # visualize table 
-    output$mapTable2 <- renderDT( hot_to_r(input$mapTableUploadEdit)) 
+    output$mapTable2 <- renderDT(hot_to_r(input$mapTableUploadEdit)) 
   })
   
   
