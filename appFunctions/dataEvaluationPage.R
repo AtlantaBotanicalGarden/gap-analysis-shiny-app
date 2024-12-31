@@ -85,20 +85,20 @@ dataEvaluationPage <- function(){
             tags$p("Please check that follow the column names in your uploaded dataset match the example dataset"),
             textOutput("validateColNames"),
           ),
-          accordion_panel(
-            "Update the data on the map",
-            actionButton("updateCombinedTable", "Update")
-          ),
-          accordion_panel(
-            "Remove Data from Map",
-            "Select button below to remove all point from within your drawn area",
-            actionButton("removeSelection", "Remove selection")
-          ),
+          # accordion_panel(
+          #   "Update the data on the map",
+          #   actionButton("updateCombinedTable", "Update")
+          # ),
+          # accordion_panel(
+          #   "Remove Data from Map",
+          #   "Select button below to remove all point from within your drawn area",
+          #   actionButton("removeSelection", "Remove selection")
+          # ),
           accordion_panel(
             "Finalize data for gap analysis",
             "Select the button below with gather all GBIF and uploaded datasets and add them to the Gap Analysis Map.",
             actionButton("compileDatasets", "Compile Data For Gap Analysis")
-          ),
+          )
         )# end of accordion 
       ), # end of sidebar 
       # main panel features

@@ -165,187 +165,187 @@ server <- function(input, output) {
   
   
   # Reactive value to store the uploaded data
- #  gbifData <- reactiveVal(NULL)
- #  
- #  ## Download data from GBIF 
- #  observeEvent(input$gbifPull, {
- #   # define all input variables 
- #   ## taxon key 
- #   if(as.character(input$taxonRank) == "species"){
- #     f1 <- gbifBackbone |>
- #       dplyr::filter(genus == as.character(input$genusSelect)) |>
- #       dplyr::filter(specificEpithet == as.character(input$speciesSelect)) |>
- #       dplyr::filter(taxonRank == as.character(input$taxonRank))
- #     taxonID <- f1$taxonID[1]
- #   }else{
- #     f1 <- gbifBackbone |> 
- #       dplyr::filter(taxonRank == as.character(input$taxonRank))|>
- #       dplyr::filter(infraspecificEpithet == as.character(input$speciesInfraspecific)) 
- #     taxonID <- f1$taxonID[1]
- #   }
- #   # synonym 
- #   synonym <- input$allowSyn
- #   # download limit
- #   downloadLimit <- input$numberGBIFDownload
- #   # issues 
- #   issueCodes <- input$issueCodes
- #   # year 
- #   if(input$useYear){
- #     year <- c(input$startYear, input$endYear)
- #   }else{
- #     year <- NULL
- #   }
+  gbifData <- reactiveVal(NULL)
+
+  ## Download data from GBIF
+  observeEvent(input$gbifPull, {
+   # define all input variables
+   ## taxon key
+   if(as.character(input$taxonRank) == "species"){
+     f1 <- gbifBackbone |>
+       dplyr::filter(genus == as.character(input$genusSelect)) |>
+       dplyr::filter(specificEpithet == as.character(input$speciesSelect)) |>
+       dplyr::filter(taxonRank == as.character(input$taxonRank))
+     taxonID <- f1$taxonID[1]
+   }else{
+     f1 <- gbifBackbone |>
+       dplyr::filter(taxonRank == as.character(input$taxonRank))|>
+       dplyr::filter(infraspecificEpithet == as.character(input$speciesInfraspecific))
+     taxonID <- f1$taxonID[1]
+   }
+   # synonym
+   synonym <- input$allowSyn
+   # download limit
+   downloadLimit <- input$numberGBIFDownload
+   # issues
+   issueCodes <- input$issueCodes
+   # year
+   if(input$useYear){
+     year <- c(input$startYear, input$endYear)
+   }else{
+     year <- NULL
+   }
  #   
  #   
  #   # define params
- #   initialPull <- query_gbif_occ(taxonkey = taxonID,
- #                  allow_synonyms_bool = synonym,
- #                  limit = downloadLimit,
- #                  year = year,
- #                  # issues_not_allowed = issueCodes
- #                  )
- #   gbifData(initialPull)
- # })
+     initialPull <- query_gbif_occ(taxonkey = taxonID,
+                    allow_synonyms_bool = synonym,
+                    limit = downloadLimit,
+                    year = year,
+                    # issues_not_allowed = issueCodes
+                    )
+     gbifData(initialPull)
+   })
  # 
  #  ## Produce a text output to show the results 
- #  output$gbifDownloadSpecifics <- renderText({
- #    if(is.null(gbifData())){
- #      "There is no data available on GBIF for this species"
- #    }else{
- #      paste0("The query returned ", nrow(gbifData()), " records.")
- #    }
- #  })
+  output$gbifDownloadSpecifics <- renderText({
+    if(is.null(gbifData())){
+      "There is no data available on GBIF for this species"
+    }else{
+      paste0("The query returned ", nrow(gbifData()), " records.")
+    }
+  })
  # 
  # 
  #  ## GBIF Data
- #  output$download1 <- downloadHandler(
- #    filename = function() {
- #      # Use the selected dataset as the suggested file name
- #      paste0(input$genusSelect,"_",input$speciesSelect, "_data.csv")
- #    },
- #    content = function(file) {
- #      # Write the dataset to the `file` that will be downloaded
- #      write.csv(gbifData(), file, row.names = FALSE)
- #    }
- #  )
+  output$download1 <- downloadHandler(
+    filename = function() {
+      # Use the selected dataset as the suggested file name
+      paste0(input$genusSelect,"_",input$speciesSelect, "_data.csv")
+    },
+    content = function(file) {
+      # Write the dataset to the `file` that will be downloaded
+      write.csv(gbifData(), file, row.names = FALSE)
+    }
+  )
  #  
  #  ## display in table
  #  # Render the rhandsontable (only if data is available)
- #  output$mapTableGBIF <- renderRHandsontable({
- #    req(gbifData()) # Require data before rendering
- #    rhandsontable(gbifData())
- #  })
+  output$mapTableGBIF <- renderRHandsontable({
+    req(gbifData()) # Require data before rendering
+    rhandsontable(gbifData())
+  })
  #  
  #  # Render the map (only if data is available)
- #  observe({
- #    req(gbifData()) # Require data before rendering
- #    # generate point objects
- #    gbifPoints <- createSpatialObject(gbifData())|>
- #      dplyr::mutate(
- #        color = case_when(
- #          `Current Germplasm Type` == "H" ~ gbifColor[1],
- #          `Current Germplasm Type` == "G" ~ gbifColor[2]
- #        )
- #      )
- #    labels <- lapply(gbifPoints$popup, htmltools::HTML)
- # 
- #    # update map
- #    leafletProxy("map1")|>
- #      setView(lng = mean(gbifPoints$Longitude), lat = mean(gbifPoints$Latitude), zoom = 6)|>
- #      addCircleMarkers(
- #        data = gbifPoints,
- #        layerId = ~`Accession Number`,
- #        group = "GBIF",
- #        radius = 4,
- #        color = "white",
- #        fillColor = ~color,
- #        stroke = TRUE,
- #        weight = 1,
- #        fillOpacity = 1,
- #        label = labels
- #      )
- #  })
+  observe({
+    req(gbifData()) # Require data before rendering
+    # generate point objects
+    gbifPoints <- createSpatialObject(gbifData())|>
+      dplyr::mutate(
+        color = case_when(
+          `Current Germplasm Type` == "H" ~ gbifColor[1],
+          `Current Germplasm Type` == "G" ~ gbifColor[2]
+        )
+      )
+    labels <- lapply(gbifPoints$popup, htmltools::HTML)
+
+    # update map
+    leafletProxy("map1")|>
+      setView(lng = mean(gbifPoints$Longitude), lat = mean(gbifPoints$Latitude), zoom = 6)|>
+      addCircleMarkers(
+        data = gbifPoints,
+        layerId = ~`Accession Number`,
+        group = "GBIF",
+        radius = 4,
+        color = "white",
+        fillColor = ~color,
+        stroke = TRUE,
+        weight = 1,
+        fillOpacity = 1,
+        label = labels
+      )
+  })
  #  # 
  #  # Observe changes in the table
- #  observeEvent(input$mapTableGBIF, {
- #    gbifData(hot_to_r(input$mapTableGBIF))
- # 
- #    gbifPoints <- createSpatialObject(gbifData())|>
- #      dplyr::mutate(
- #        color = case_when(
- #          `Current Germplasm Type` == "H" ~ gbifColor[1],
- #          `Current Germplasm Type` == "G" ~ gbifColor[2]
- #        )
- #      )
- #    labels <- lapply(gbifPoints$popup, htmltools::HTML)
- # 
- #    # update map
- #    leafletProxy("map1")|>
- #      setView(lng = mean(gbifPoints$Longitude), lat = mean(gbifPoints$Latitude), zoom = 6)|>
- #      addCircleMarkers(
- #        data = gbifPoints,
- #        layerId = ~`Accession Number`,
- #        group = "GBIF",
- #        radius = 4,
- #        color = "white",
- #        fillColor = ~color,
- #        stroke = TRUE,
- #        weight = 1,
- #        fillOpacity = 1,
- #        label = labels
- #      )
- #  })
+  observeEvent(input$mapTableGBIF, {
+    gbifData(hot_to_r(input$mapTableGBIF))
+
+    gbifPoints <- createSpatialObject(gbifData())|>
+      dplyr::mutate(
+        color = case_when(
+          `Current Germplasm Type` == "H" ~ gbifColor[1],
+          `Current Germplasm Type` == "G" ~ gbifColor[2]
+        )
+      )
+    labels <- lapply(gbifPoints$popup, htmltools::HTML)
+
+    # update map
+    leafletProxy("map1")|>
+      setView(lng = mean(gbifPoints$Longitude), lat = mean(gbifPoints$Latitude), zoom = 6)|>
+      addCircleMarkers(
+        data = gbifPoints,
+        layerId = ~`Accession Number`,
+        group = "GBIF",
+        radius = 4,
+        color = "white",
+        fillColor = ~color,
+        stroke = TRUE,
+        weight = 1,
+        fillOpacity = 1,
+        label = labels
+      )
+  })
  #  # Reactive values to store selected markers
- #  selectedGBIF <- reactiveValues(markers = NULL)
+  selectedGBIF <- reactiveValues(markers = NULL)
 
   # INDIVIDUAL POINT SELECTION
   # Observe marker clicks
-  # observeEvent(input$map1_marker_click, {
-  #   click <- input$map1_marker_click
-  #   # regenerateing the spatial data to try to resolve the removal of the inital layer on select 
-  #   gbifData(hot_to_r(input$mapTableGBIF))
-  #   
-  #   gbifPoints2 <- createSpatialObject(gbifData())|>
-  #     dplyr::mutate(
-  #       color = case_when(
-  #         `Current Germplasm Type` == "H" ~ gbifColor[1],
-  #         `Current Germplasm Type` == "G" ~ gbifColor[2]
-  #       )
-  #     )
-  #   labels <- lapply(gbifPoints2$popup, htmltools::HTML)
-  #   
-  #   if(click$group == "GBIF"){
-  #     # add it to selected markers
-  #     selectedGBIF$markers <- c(selectedGBIF$markers, click$id)
-  #     # edit map
-  #     leafletProxy("map1") %>%
-  #       addCircleMarkers(
-  #         data = gbifPoints2[gbifPoints2$`Accession Number` == click$id, ],
-  #         layerId = ~`Accession Number`,
-  #         radius = 4,
-  #         color = "red",
-  #         fillOpacity = 0.8,
-  #         stroke = FALSE,
-  #         group = "GBIF Selection"
-  #       )
-  #   }
-  #   if(click$group == "GBIF Selection"){
-  #     # remove the item from selection
-  #     selectedGBIF$markers <- selectedGBIF$markers[selectedGBIF$markers != click$id]
-  #     # update the map
-  #     leafletProxy("map1") %>%
-  #       leaflet::clearGroup("GBIF Selection") |>
-  #       addCircleMarkers(
-  #         data = gbifPoints2[gbifPoints2$`Accession Number` %in% selectedGBIF$markers, ],
-  #         layerId = ~`Accession Number`,
-  #         radius = 4,
-  #         color = "red",
-  #         fillOpacity = 0.8,
-  #         stroke = FALSE,
-  #         group = "GBIF Selection"
-  #       )
-  #   }
-  # })
+  observeEvent(input$map1_marker_click, {
+    click <- input$map1_marker_click
+    # regenerateing the spatial data to try to resolve the removal of the inital layer on select
+    gbifData(hot_to_r(input$mapTableGBIF))
+
+    gbifPoints2 <- createSpatialObject(gbifData())|>
+      dplyr::mutate(
+        color = case_when(
+          `Current Germplasm Type` == "H" ~ gbifColor[1],
+          `Current Germplasm Type` == "G" ~ gbifColor[2]
+        )
+      )
+    labels <- lapply(gbifPoints2$popup, htmltools::HTML)
+
+    if(click$group == "GBIF"){
+      # add it to selected markers
+      selectedGBIF$markers <- c(selectedGBIF$markers, click$id)
+      # edit map
+      leafletProxy("map1") %>%
+        addCircleMarkers(
+          data = gbifPoints2[gbifPoints2$`Accession Number` == click$id, ],
+          layerId = ~`Accession Number`,
+          radius = 4,
+          color = "red",
+          fillOpacity = 0.8,
+          stroke = FALSE,
+          group = "GBIF Selection"
+        )
+    }
+    if(click$group == "GBIF Selection"){
+      # remove the item from selection
+      selectedGBIF$markers <- selectedGBIF$markers[selectedGBIF$markers != click$id]
+      # update the map
+      leafletProxy("map1") %>%
+        leaflet::clearGroup("GBIF Selection") |>
+        addCircleMarkers(
+          data = gbifPoints2[gbifPoints2$`Accession Number` %in% selectedGBIF$markers, ],
+          layerId = ~`Accession Number`,
+          radius = 4,
+          color = "red",
+          fillOpacity = 0.8,
+          stroke = FALSE,
+          group = "GBIF Selection"
+        )
+    }
+  })
   
   
   # uploaded dataset processing -----------------------------------------------
@@ -506,63 +506,58 @@ server <- function(input, output) {
 
   
   
-
-  # remove selected features  -----------------------------------------------
-  observeEvent(input$removeSelection, {
-
-    print(selectedUpload$markers)
-    # Remove selected points from the table data
-    dataUpload(dataUpload()[-c(selectedUpload$markers), ])
-
-    # rerender table
-    output$mapTableUpload <- renderRHandsontable({
-      req(dataUpload()) # Require data before rendering
-      rhandsontable(dataUpload())
-    })
+  # combined table---------------------------------------------
+  ## take the selected data from both groups and use that to filter the two dataframes 
+  
+  gapAnalysisData <- reactive(NULL)
+  
+  observeEvent(input$compileDatasets, {    # attempt to pull the table data 
+    d1 <- NA
+    d2 <- NA
+    d3 <- NA
+    outputTable <- data.frame()
+    # organize the gbif data
+    d1 <- try(gbifData()|>
+                dplyr::mutate(source = "GBIF",
+                              "Accession Number" = as.character(`Accession Number`),
+                              "Collection Date" = as.character(`Collection Date`)))
+    d2 <- try(dataUpload()|>
+                  dplyr::mutate(source = "upload",
+                                "Accession Number" = as.character(`Accession Number`),
+                                "Collection Date" = as.character(`Collection Date`)))
+    d3 <- try(dplyr::bind_rows(d1,d2))
+    # both datasets
+    if("data.frame" %in% class(d3)){
+      outputTable <- d3
+    }
+    # upload olny
+    if(is.null(gbifData())){
+      outputTable <- d2
+    }
+    #gbif only
+    if(is.null(dataUpload())){
+      outputTable <- d1
+    }
+    outputTable
+    # print(outputTable)
     
-    # Remove all markers from the "selected" group on the map
-    leafletProxy("map1") %>%
-      clearGroup("Upload Selection")
+    # pull the position ids from the map selections 
+    ## upload 
+    uploadSelection <- selectedUpload$markers
+    if(length(uploadSelection) > 0){
+      outputTable <- outputTable[!outputTable$`Accession Number`%in% uploadSelection, ]
+    }
+    ## gbif 
+    gbifSelection <- selectedGBIF$markers 
+    if(length(gbifSelection)>0){
+      outputTable <- outputTable[!outputTable$`Accession Number`%in% gbifSelection, ]
+    }
+    
+    
+    print(nrow(outputTable))
+    
   })
   
-  
-  
-  
-  # combined table---------------------------------------------
-  # combined_data <- reactive({
-  #     d1 <- NA
-  #     d2 <- NA
-  #     d3 <- NA
-  #     outputTable <- data.frame()
-  #   # organize the gbif data
-  #   d1 <- try(gbifData()|>
-  #               dplyr::mutate(source = "GBIF",
-  #                             "Accession Number" = as.character(`Accession Number`),
-  #                             "Collection Date" = as.character(`Collection Date`)))
-  #   d2 <- try(dataUpload()|>
-  #                 dplyr::mutate(source = "upload",
-  #                               "Accession Number" = as.character(`Accession Number`),
-  #                               "Collection Date" = as.character(`Collection Date`)))
-  #   d3 <- try(dplyr::bind_rows(d1,d2))
-  #   # both datasets
-  #   if("data.frame" %in% class(d3)){
-  #     outputTable <- d3
-  #   }
-  #   # upload olny
-  #   if("data.frame" %in% class(d2) && !"data.frame" %in% class(d1)){
-  #     outputTable <- d2
-  #   }
-  #   #gbif only
-  #   if(!"data.frame" %in% class(d2) && "data.frame" %in% class(d1)){
-  #     outputTable <- d1
-  #   }
-  #   outputTable
-  # })
-  # 
-  
-  
-  
-
   # Gap Analysis Page  ------------------------------------------------------
   ## generate the gapAnalysus input dataset ----
 
