@@ -143,5 +143,7 @@ query_gbif_occ <- function(taxonkey,
       "Locality" = NA
       )
   }
+  
+  output$`Accession Number` <- as.character(output$`Accession Number`)
   return(output)
 }

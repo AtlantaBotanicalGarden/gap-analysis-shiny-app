@@ -205,6 +205,9 @@ server <- function(input, output, session) {
                     year = year,
                     # issues_not_allowed = issueCodes
                     )
+     # force character to joins later on.
+     initialPull$`Accession Number` <- as.character(initialPull$`Accession Number`)
+     
      gbifData(initialPull)
    })
  # 
@@ -394,6 +397,10 @@ server <- function(input, output, session) {
     }
     # Read the uploaded CSV file
     uploaded_data <- vroom::vroom(inFile$datapath, delim = ",")
+    
+    # assign id as character 
+    uploaded_data$`Accession Number` <- as.character( uploaded_data$`Accession Number`)
+    
     # Update the reactive value with the uploaded data
     dataUpload(uploaded_data)    
   })
@@ -521,19 +528,26 @@ server <- function(input, output, session) {
   # Combine the data sets only when the button is clicked
   observeEvent(input$compileDatasets, {
     if (!is.null(gbifData()) && !is.null(dataUpload())) {
-      # Both exist: Try to combine
-      tryCatch({
+      # Both exist: combine
+      print("gbif")
+      print(str(gbifData()))
+      print("upload")
+      print(str(dataUpload()))
+      
         combined <- bind_rows(gbifData(), dataUpload())
-      }, error = function(e) {
-        showNotification(paste("Error combining data:", e$message), type = "error")
-        NULL
-      })
+        print("both datasets 1")
+      # }, error = function(e) {
+      #   showNotification(paste("Error combining data:", e$message), type = "error")
+      #   NULL
+      # })
     } else if (!is.null(gbifData())) {
       # Only data1 exists
       combined <- gbifData()
+      print("gbif only 1")
     } else if (!is.null(dataUpload())) {
       # Only data2 exists
       combined <- dataUpload()
+      print("upload only 1")
     } else {
       # Neither exists
       NULL
@@ -544,27 +558,30 @@ server <- function(input, output, session) {
       uploadSelection <- selectedUpload$markers
       gbifSelection <- selectedGBIF$markers
       if(!is.null(uploadSelection) && !is.null(gbifSelection)){
+        print("Both selection 2")
         selectAccession <- c(uploadSelection,gbifSelection )
         # drop accessions  
         combined2 <- combined[!combined$`Accession Number`%in% selectAccession, ]
         # generate object 
         combined_data(combined2)
       }else if(is.null(uploadSelection) && !is.null(gbifSelection)){
+        print("gbif selection 2 ")
         # drop accessions  
         combined2 <- combined[!combined$`Accession Number`%in% gbifSelection, ]
         # generate object 
         combined_data(combined2)
       }else if(!is.null(uploadSelection) && is.null(gbifSelection)){
+        print( "upload selection 2")
         # drop accessions  
         combined2 <- combined[!combined$`Accession Number`%in% uploadSelection, ]
         # generate object 
         combined_data(combined2)
       }else{
+        print("no selection 2")
+        # no selection 
         combined_data(combined)
       }
-
       # generate object 
-      combined_data(combined2)
       print(combined_data)
     }else{
       combined_data(combined)
