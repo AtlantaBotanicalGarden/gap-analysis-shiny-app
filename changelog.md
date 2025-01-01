@@ -20,11 +20,15 @@ Versioning Nomenclature
 ## Gamma 2.1 
 
 ### added 
-
+- new point visualization on the data analysis page 
+- new popup element that enables a data download before moving to gap analysis page 
 
 ### changed 
 
 - alter map/table layout to be a side by side features 
+- simplified the number of button pushes require for map visualizations 
+- greatly improved the stability of the download gbif options 
+
 
 ### removed 
 

@@ -207,7 +207,9 @@ server <- function(input, output, session) {
                     )
      # force character to joins later on.
      initialPull$`Accession Number` <- as.character(initialPull$`Accession Number`)
-     
+     initialPull$source <- "GBIF"
+     initialPull$index <- seq(from = 20000, to = 20000+nrow(initialPull)-1, by = 1 )
+
      gbifData(initialPull)
    })
  # 
@@ -258,7 +260,7 @@ server <- function(input, output, session) {
       setView(lng = mean(gbifPoints$Longitude), lat = mean(gbifPoints$Latitude), zoom = 6)|>
       addCircleMarkers(
         data = gbifPoints,
-        layerId = ~`Accession Number`,
+        layerId = ~index,
         group = "GBIF",
         radius = 4,
         color = "white",
@@ -288,7 +290,7 @@ server <- function(input, output, session) {
       setView(lng = mean(gbifPoints$Longitude), lat = mean(gbifPoints$Latitude), zoom = 6)|>
       addCircleMarkers(
         data = gbifPoints,
-        layerId = ~`Accession Number`,
+        layerId = ~index,
         group = "GBIF",
         radius = 4,
         color = "white",
@@ -306,7 +308,7 @@ server <- function(input, output, session) {
   # Observe marker clicks
   observeEvent(input$map1_marker_click, {
     click <- input$map1_marker_click
-    
+    print(click)
     # need a condition to prevent triggering from the upload selection
     if(click$group == "GBIF" || click$group == "GBIF Selection"){
       # # regenerateing the spatial data to try to resolve the removal of the inital layer on select
@@ -329,8 +331,8 @@ server <- function(input, output, session) {
       # edit map
       leafletProxy("map1") %>%
         addCircleMarkers(
-          data = gbifPoints[gbifPoints$`Accession Number` == click$id, ],
-          layerId = ~`Accession Number`,
+          data = gbifPoints[gbifPoints$index == click$id, ],
+          layerId = ~index,
           radius = 4,
           color = "red",
           fillOpacity = 0.8,
@@ -345,8 +347,8 @@ server <- function(input, output, session) {
       leafletProxy("map1") %>%
         leaflet::clearGroup("GBIF Selection") |>
         addCircleMarkers(
-          data = gbifPoints[gbifPoints$`Accession Number` %in% selectedGBIF$markers, ],
-          layerId = ~`Accession Number`,
+          data = gbifPoints[gbifPoints$index %in% selectedGBIF$markers, ],
+          layerId = ~index,
           radius = 4,
           color = "red",
           fillOpacity = 0.8,
@@ -400,7 +402,8 @@ server <- function(input, output, session) {
     
     # assign id as character 
     uploaded_data$`Accession Number` <- as.character( uploaded_data$`Accession Number`)
-    
+    uploaded_data$index <- seq(from = 1000, to = 1000 +nrow(uploaded_data)+1, by = 1)
+    uploaded_data$source <- "upload"
     # Update the reactive value with the uploaded data
     dataUpload(uploaded_data)    
   })
@@ -430,7 +433,7 @@ server <- function(input, output, session) {
       setView(lng = mean(uploadPoints$Longitude), lat = mean(uploadPoints$Latitude), zoom = 6)|>
       addCircleMarkers(
         data = uploadPoints,
-        layerId = ~`Accession Number`,
+        layerId = ~index,
         group = "Upload",
         radius = 4,
         color = "white",
@@ -460,7 +463,7 @@ server <- function(input, output, session) {
       setView(lng = mean(uploadPoints$Longitude), lat = mean(uploadPoints$Latitude), zoom = 6)|>
       addCircleMarkers(
         data = uploadPoints,
-        layerId = ~`Accession Number`,
+        layerId = ~index,
         group = "Upload",
         radius = 4,
         color = "white",
@@ -490,8 +493,8 @@ server <- function(input, output, session) {
       leafletProxy("map1") %>%
           addCircleMarkers(
             data = uploadPoints |>
-              dplyr::filter(`Accession Number` == click$id) ,
-            layerId = ~`Accession Number`,
+              dplyr::filter(index == click$id) ,
+            layerId = ~index,
             radius = 4,
             color = "red",
             fillOpacity = 0.8,
@@ -506,8 +509,8 @@ server <- function(input, output, session) {
       leafletProxy("map1") %>%
         leaflet::clearGroup("Upload Selection") |>
         addCircleMarkers(
-          data = uploadPoints[uploadPoints$`Accession Number` %in% selectedUpload$markers, ],
-          layerId = ~`Accession Number`,
+          data = uploadPoints[uploadPoints$index %in% selectedUpload$markers, ],
+          layerId = ~index,
           radius = 4,
           color = "red",
           fillOpacity = 0.8,
@@ -529,11 +532,6 @@ server <- function(input, output, session) {
   observeEvent(input$compileDatasets, {
     if (!is.null(gbifData()) && !is.null(dataUpload())) {
       # Both exist: combine
-      print("gbif")
-      print(str(gbifData()))
-      print("upload")
-      print(str(dataUpload()))
-      
         combined <- bind_rows(gbifData(), dataUpload())
         print("both datasets 1")
       # }, error = function(e) {
@@ -555,25 +553,36 @@ server <- function(input, output, session) {
     # returned a filtered dataset based on the map selection 
     if(!is.null(combined)){
       ## add the filtering data set back in 
-      uploadSelection <- selectedUpload$markers
-      gbifSelection <- selectedGBIF$markers
+      uploadSelection <- NULL
+      gbifSelection <- NULL
+      if(!is.null(dataUpload())){
+        uploadSelection <- dataUpload()$index[selectedUpload$markers,]
+        }
+      if(!is.null(gbifData())){
+        # g1 <- gbifData()
+        gbifSelection <- gbifData()$index[selectedGBIF$markers]
+        print(gbifSelection)
+      }
+      
       if(!is.null(uploadSelection) && !is.null(gbifSelection)){
         print("Both selection 2")
+        
+        # drop values before combining 
         selectAccession <- c(uploadSelection,gbifSelection )
         # drop accessions  
-        combined2 <- combined[!combined$`Accession Number`%in% selectAccession, ]
+        combined2 <- combined[!combined$index%in% selectAccession, ]
         # generate object 
         combined_data(combined2)
       }else if(is.null(uploadSelection) && !is.null(gbifSelection)){
         print("gbif selection 2 ")
         # drop accessions  
-        combined2 <- combined[!combined$`Accession Number`%in% gbifSelection, ]
+        combined2 <- combined[!combined$index%in% gbifSelection, ]
         # generate object 
         combined_data(combined2)
       }else if(!is.null(uploadSelection) && is.null(gbifSelection)){
         print( "upload selection 2")
         # drop accessions  
-        combined2 <- combined[!combined$`Accession Number`%in% uploadSelection, ]
+        combined2 <- combined[!combined$index%in% uploadSelection, ]
         # generate object 
         combined_data(combined2)
       }else{
