@@ -402,7 +402,7 @@ server <- function(input, output, session) {
     
     # assign id as character 
     uploaded_data$`Accession Number` <- as.character( uploaded_data$`Accession Number`)
-    uploaded_data$index <- seq(from = 1000, to = 1000 +nrow(uploaded_data)+1, by = 1)
+    uploaded_data$index <- seq(from = 1000, to = 1000 +nrow(uploaded_data) - 1, by = 1)
     uploaded_data$source <- "upload"
     # Update the reactive value with the uploaded data
     dataUpload(uploaded_data)    
@@ -493,7 +493,7 @@ server <- function(input, output, session) {
       leafletProxy("map1") %>%
           addCircleMarkers(
             data = uploadPoints |>
-              dplyr::filter(index == click$id) ,
+              dplyr::filter(index == uploadPoints$index[click$id]) ,
             layerId = ~index,
             radius = 4,
             color = "red",
@@ -555,8 +555,9 @@ server <- function(input, output, session) {
       ## add the filtering data set back in 
       uploadSelection <- NULL
       gbifSelection <- NULL
+      print("filter on selection ")
       if(!is.null(dataUpload())){
-        uploadSelection <- dataUpload()$index[selectedUpload$markers,]
+        uploadSelection <- dataUpload()$index[selectedUpload$markers]
         }
       if(!is.null(gbifData())){
         # g1 <- gbifData()
@@ -654,7 +655,7 @@ server <- function(input, output, session) {
   # generate dataframe object 
   observeEvent(input$compileDatasets, {
     # visualize table 
-    output$mapTable2 <- renderDT(hot_to_r(input$mapTableUploadEdit)) 
+    output$mapTable2 <- renderDT(combined_data()) 
   })
   
   
