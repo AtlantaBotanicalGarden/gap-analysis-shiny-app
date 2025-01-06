@@ -46,13 +46,14 @@ gapAnalysisPage <- function(){
         full_screen = TRUE,
         title = "Results of the Gap Analysis",
         nav_panel(
-          "Gap Analysis Results",
-          plotlyOutput('gapAnalysisResults')
-        ),
-        nav_panel(
           "Input Data",
           DTOutput("mapTable2"),
         ),
+        nav_panel(
+          "Gap Analysis Results",
+          plotlyOutput('gapAnalysisResults')
+        ),
+
       )
   )
 }

@@ -51,27 +51,47 @@ createSpatialObject <- function(table){
 
 generateMap2 <- function(){
   # inital map for gap analysis page
-  map2 <- leaflet::leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16))|>
+  map2 <-  leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16)) |>
     addProviderTiles("OpenStreetMap", group = "OpenStreetMap") |>
     addProviderTiles("Esri.WorldTopoMap", group = "Topography") |>
-    addProviderTiles("Esri.WorldImagery", group = "Imagery") |>
-    addMapPane("points", zIndex = 215) |>
-    addMapPane("buffers", zIndex = 210)|>
-    addMapPane("gaps", zIndex = 205) |> 
-    addMapPane("ecoregions", zIndex = 205) |> 
-    addLayersControl( 
+    addProviderTiles("Esri.WorldImagery", group = "Imagery")|>
+    addLayersControl(
       position = "topleft",
       overlayGroups = c("Reference Records",
                         "Germplasm Records",
                         "Buffers",
                         "GRS gaps",
                         "ERS gaps"),
-      baseGroups = c(
-        "OpenStreetMap",
-        "Topography",
-        "Imagery"
-      ),
-      options = layersControlOptions(collapsed = FALSE))
+      baseGroups = c("OpenStreetMap",
+                     "Topography",
+                     "Imagery"),
+      options = layersControlOptions(collapsed = FALSE)
+    )|>
+    hideGroup(c("Buffers","GRS gaps","ERS gaps")) |>
+    addMapPane("polygon1", zIndex = 400) |>  # Lower zIndex for polygons
+    addMapPane("polygon2", zIndex = 405) |>
+    addMapPane("polygon3", zIndex = 410) |>
+    addMapPane("pointsH", zIndex = 415) |>   # Higher zIndex for points1
+    addMapPane("pointsG", zIndex = 420) 
+  
+    # 
+    # addMapPane("points", zIndex = 215) |>
+    # addMapPane("buffers", zIndex = 210)|>
+    # addMapPane("gaps", zIndex = 205) |> 
+    # addMapPane("ecoregions", zIndex = 205) |> 
+    # addLayersControl( 
+    #   position = "topleft",
+    #   overlayGroups = c("Reference Records",
+    #                     "Germplasm Records",
+    #                     "Buffers",
+    #                     "GRS gaps",
+    #                     "ERS gaps"),
+    #   baseGroups = c(
+    #     "OpenStreetMap",
+    #     "Topography",
+    #     "Imagery"
+    #   ),
+    #   options = layersControlOptions(collapsed = FALSE))
   return(map2)
 }
 
