@@ -664,7 +664,6 @@ server <- function(input, output, session) {
   # Observer to add points to the map when the button is clicked
   ## for some reason this does not work if on the 'continue' button so leaving the add to maps button for now. 
   observeEvent(input$addGapPoints, {
-      # esure that the combine data exists
       req(combined_data())
       gapPoints <- createSpatialObject(combined_data())|>
               dplyr::mutate(
@@ -741,45 +740,79 @@ server <- function(input, output, session) {
   
   ## createBuffersGap --- 
   ## buffer points -----------------------------------------------------------
-  # pointsBuffer <- eventReactive(input$createBuffersGap, {
-  #   gapPoints()|>
-  #     terra::vect()|>
-  #     terra::buffer(width = as.numeric(input$bufferSize) * 1000)
-  #   })
-  # # aggregate buffers and crop 
+  pointsBuffer <- eventReactive(input$createBuffersGap, {
+    ## so this will break if this is selected before the add to map... not worrying about it now 
+    gapPoints <- createSpatialObject(combined_data())|>
+      dplyr::mutate(
+        color = case_when(
+          `Current Germplasm Type` == "H" ~ combinedColor[1],
+          `Current Germplasm Type` == "G" ~ combinedColor[2]
+        )
+      )|>
+      terra::vect()|>
+      terra::buffer(width = as.numeric(input$bufferSize) * 1000)|>
+      terra::intersect(land)
+
+    gapPoints
+    })
+  # aggregate buffers and crop
   # aggregateBuffers <-  eventReactive(input$createBuffersGap, {
-  #   pointsBuffer() |>
-  #     terra::aggregate()|>
-  #     terra::mask(mask = land)
+  #   pointsBuffer() 
   #   })
   # 
-  # # # g buffer object 
-  # ## sf objects because they are being added to the map
+  # g buffer object
+  ## sf objects because they are being added to the map
   # gGapBuffer <- eventReactive(input$createBuffersGap, {
   #   # g points
-  #   pointsBuffer()|>
+  #   aggregateBuffers()|>
   #     sf::st_as_sf()|>
   #     dplyr::filter(`Current Germplasm Type` == "G")
   # })
   # # h buffer object
   # ## sf objects because they are being added to the map
   # hGapBuffer <- eventReactive(input$createBuffersGap, {
-  #   pointsBuffer()|>
+  #   aggregateBuffers()|>
   #     sf::st_as_sf()|>
   #     dplyr::filter(`Current Germplasm Type` == "H")
   #   })
-  # # 
-  # ### update map with buffer features ---
-  # observeEvent(input$createBuffersGap, {
-  #   # aggregate buffer object to reduce complexity
-  #   hbuf <- hGapBuffer() |>
-  #     terra::vect() |>
-  #     terra::aggregate()|>
-  #     st_as_sf()
-  #   gbuf <- gGapBuffer() |>
-  #     terra::vect() |>
-  #     terra::aggregate()|>
-  #     st_as_sf()
+
+  ### update map with buffer features ---
+  observeEvent(pointsBuffer(), {
+    print("h buf 1")
+    hBuff <- pointsBuffer()|>
+      sf::st_as_sf()|>
+      dplyr::filter(`Current Germplasm Type` == "H")|>
+      sf::st_union()
+    
+    gBuff <- pointsBuffer()|>
+      sf::st_as_sf()|>
+      dplyr::filter(`Current Germplasm Type` == "G")|>
+      sf::st_union()
+    
+    # aggregate buffer object to reduce complexity
+      print("trying h buffer")
+      leafletProxy("map2")|>
+        # clearGroup("Buffers")|>
+        addPolygons(data = hBuff,
+                group = "Buffers",
+                color = combinedColor[1],
+                fillOpacity = 0.5,
+                options = pathOptions(pane = "polygon2"))
+      leafletProxy("map2")|>
+        # clearGroup("Buffers")|>
+        addPolygons(data = gBuff,
+                    group = "Buffers",
+                    color = combinedColor[2],
+                    fillOpacity = 0.5,
+                    options = pathOptions(pane = "polygon3"))
+      
+  })
+
+# 
+#     gbuf <- gGapBuffer() |>
+#       terra::vect() |>
+#       terra::aggregate()|>
+#       st_as_sf()
   # 
   # 
   #   if(nrow(gbuf)!=0){

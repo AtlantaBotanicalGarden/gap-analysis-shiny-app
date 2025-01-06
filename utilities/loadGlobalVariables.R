@@ -21,7 +21,7 @@ land <- terra::vect("appData/water/land.gpkg")
 # Color Palettes --- H , G 
 uploadColor <-  c("#dfc27d", "#a6611a")
 gbifColor <- c("#80cdc1", "#018571")
-combinedColor <- c("#fee0b6","#542788") 
+combinedColor <- c("#f1a340","#542788") 
 
 
 
