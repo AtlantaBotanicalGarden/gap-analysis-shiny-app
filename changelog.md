@@ -20,8 +20,9 @@ Versioning Nomenclature
 ## Gamma 2.1 
 
 ### added 
-- new point visualization on the data analysis page 
+- new point visualization on the data analysis page - upload and gbif data are seperate 
 - new popup element that enables a data download before moving to gap analysis page 
+- added new color/layout legend elements to the buffer map page 
 
 ### changed 
 
