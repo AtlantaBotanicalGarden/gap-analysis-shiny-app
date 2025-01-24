@@ -192,7 +192,7 @@ server <- function(input, output, session) {
    issueCodes <- input$issueCodes
    # year
    if(input$useYear){
-     year <- c(input$startYear, input$endYear)
+     year <- c(input$startYear,input$endYear)
    }else{
      year <- NULL
    }

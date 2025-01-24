@@ -23,5 +23,16 @@ uploadColor <-  c("#dfc27d", "#a6611a")
 gbifColor <- c("#80cdc1", "#018571")
 combinedColor <- c("#f1a340","#542788") 
 
+# define shapes for legend elements 
+## from https://stackoverflow.com/questions/52812238/custom-legend-with-r-leaflet-circles-and-squares-in-same-plot-legends
+make_shapes <- function(colors, sizes, borders, shapes) {
+  shapes <- gsub("circle", "50%", shapes)
+  shapes <- gsub("square", "0%", shapes)
+  paste0(colors, "; width:", sizes, "px; height:", sizes, "px; border:3px solid ", borders, "; border-radius:", shapes)
+}
+  
+gbif_legend_colors <- make_shapes(gbifColor, sizes = 20, borders = "white", shapes = "circle")
+upload_legend_colors <- make_shapes(uploadColor, sizes = 20, borders = "white", shapes = "circle")
 
+  
 

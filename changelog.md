@@ -16,6 +16,28 @@ Versioning Nomenclature
 
 *Fixed* for any bug fixes. 
 
+## Gamma 2.1.1
+Updates from 2025 01 24 
+
+Goals 
+data eval page
+- remove index column from the tables 
+
+gap analysis page 
+- add a wait spinner for buffer point generation 
+- add lakes to water filter dataset 
+- add unique symbols to data based on source 
+- add the complete gap anlaysis workflow back in 
+- start development of the report 
+- 
+
+### added 
+- legend to data evaluation page 
+
+### change 
+- ensure the year seaching  gbif data is working as expected
+- added a stop gap error catch measure for cases when no records are pulled 
+
 
 ## Gamma 2.1 
 

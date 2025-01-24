@@ -17,7 +17,25 @@ generateMap1 <- function(){
                      "Topography",
                      "Imagery"),
       options = layersControlOptions(collapsed = FALSE)
+    )|>
+    addLegend(
+      position = "topright",
+      colors = gbif_legend_colors,
+      labels = c("GBIF Reference", "GBIF Germplasm"),
+      group = "GBIF"
+    )|>
+    addLegend(
+      position = "topright",
+      colors = upload_legend_colors,
+      labels = c("Upload Reference", "Upload Germplasm"),
+      group = "Upload"
+    )|>
+    addLegend(
+      position = "topright",
+      colors = "red",
+      labels = c("Selected Point")
     )
+    
 
   return(map1)
 }
