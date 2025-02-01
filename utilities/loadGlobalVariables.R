@@ -4,7 +4,7 @@ gbifBackbone <- read_csv("appData/gbifBackBone.csv")
 genera <- unique(gbifBackbone$genus)
 
 # eco regions 
-ecoRegions <- terra::vect("appData/ecoregionsSimplified.gpkg")
+ecoRegions <-terra::vect("appData/ecoregionsSimplified.gpkg")
 
 # names for the datasets 
 expectedNames <- c("Accession Number",	"Taxon Name",	"Current Germplasm Type",	"Collection Date",
@@ -16,12 +16,16 @@ tempTable <- read.csv("dataToPreProcess/Magnolia_acuminata_data.csv")|>
 names(tempTable) <- c(expectedNames ,"geometry")
 
 # load in land mask 
-land <- terra::vect("appData/water/land.gpkg")
+land <- terra::vect("appData/land/landNoLakes.gpkg")
 
 # Color Palettes --- H , G 
 uploadColor <-  c("#dfc27d", "#a6611a")
 gbifColor <- c("#80cdc1", "#018571")
 combinedColor <- c("#f1a340","#542788") 
+grsexColor <- c("#ef8a62")
+ersexColor <- c("#d1e5f0")
+
+
 
 # define shapes for legend elements 
 ## from https://stackoverflow.com/questions/52812238/custom-legend-with-r-leaflet-circles-and-squares-in-same-plot-legends
@@ -34,5 +38,13 @@ make_shapes <- function(colors, sizes, borders, shapes) {
 gbif_legend_colors <- make_shapes(gbifColor, sizes = 20, borders = "white", shapes = "circle")
 upload_legend_colors <- make_shapes(uploadColor, sizes = 20, borders = "white", shapes = "circle")
 
-  
+gbif_GapMap <- make_shapes(combinedColor, sizes = 20, borders = "white", shapes = "square")  
+upload_GapMap <- make_shapes(combinedColor, sizes = 20, borders = "white", shapes = "circle")
 
+# icons for gap analysis map
+icon_paths <- list( 
+  g_gbif = "www/purpleSquare.png",
+  h_gbif = "www/orangeSquare.png",
+  g_upload = "www/purpleCircle.png",
+  h_upload = "www/orangeCircle.png"
+)

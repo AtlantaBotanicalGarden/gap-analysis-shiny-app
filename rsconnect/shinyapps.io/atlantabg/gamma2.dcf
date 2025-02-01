@@ -1,11 +1,11 @@
 name: gamma2
-title: gamma2
+title: gap-analysis-shiny-app
 username: atlantabg
 account: atlantabg
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 13660697
-bundleId: 9602948
+bundleId: 9697048
 url: https://atlantabg.shinyapps.io/gamma2/
 version: 1
 asMultiple: FALSE

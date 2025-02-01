@@ -45,7 +45,9 @@ query_gbif_occ <- function(taxonkey,
                                       hasCoordinate = TRUE,
                                       hasGeospatialIssue = FALSE,
                                       limit = pull)
-    parsed_response  <- gbif_response2$data
+    
+    # combine the datasets
+    parsed_response  <- dplyr::bind_rows(summary1, gbif_response2$data)
   }else{
     # assign this outside of the forloop to intilize 
     summary1 <- NULL

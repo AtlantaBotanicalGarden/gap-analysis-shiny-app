@@ -21,16 +21,12 @@ gapAnalysisPage <- function(){
           ),
           accordion_panel(
             "Run Gap Analysis",
-            actionButton("createBuffersGap", "1. Create Buffers"),
-            tags$br(),
-            actionButton("generateGapMaps", "2. Create Gap Maps Layers"),
-            tags$br(),
-            actionButton("generateGapSummary", "3. Generate Summary Figure")
+            actionButton("createBuffersGap", "1. Run Gap Analysis"),
           ),
           accordion_panel(
             "Export Map",
             p("placeholder for future functionality"),
-            actionButton("exportGapMap", "Download the current map")
+            actionButton("exportGapMap", "Download Report")
           )
         )
       ),
@@ -39,6 +35,8 @@ gapAnalysisPage <- function(){
         card_header("Map of Gap Analysis Results"),
         leaflet::leafletOutput("map2"),
         # card_footer("Description of the map? ")
+        # Text output area below the map
+        htmlOutput("map_text_output")
       ),
     ),
     navset_card_tab(
@@ -53,7 +51,6 @@ gapAnalysisPage <- function(){
           "Gap Analysis Results",
           plotlyOutput('gapAnalysisResults')
         ),
-
       )
   )
 }

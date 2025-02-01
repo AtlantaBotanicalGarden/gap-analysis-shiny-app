@@ -85,12 +85,22 @@ generateMap2 <- function(){
                      "Imagery"),
       options = layersControlOptions(collapsed = FALSE)
     )|>
-    hideGroup(c("Buffers","GRS gaps","ERS gaps")) |>
-    addMapPane("polygon1", zIndex = 400) |>  # Lower zIndex for polygons
-    addMapPane("polygon2", zIndex = 405) |>
-    addMapPane("polygon3", zIndex = 410) |>
+    hideGroup(c("GRS gaps","ERS gaps")) |> # keeping enabled for now
+    addMapPane("ersGap", zIndex = 400) |>  # Lower zIndex for polygons
+    addMapPane("grsGap", zIndex = 405) |>
+    addMapPane("allBuffers", zIndex = 410) |>
     addMapPane("pointsH", zIndex = 415) |>   # Higher zIndex for points1
-    addMapPane("pointsG", zIndex = 420) 
+    addMapPane("pointsG", zIndex = 420) |>
+    addLegend(
+      position = "topright",
+      colors = gbif_GapMap,
+      labels = c("GBIF Reference", "GBIF Germplasm")
+    )|>
+    addLegend(
+      position = "topright",
+      colors = upload_GapMap,
+      labels = c("Upload Reference", "Upload Germplasm")
+    )
   
     # 
     # addMapPane("points", zIndex = 215) |>

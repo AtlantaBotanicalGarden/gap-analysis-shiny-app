@@ -16,23 +16,35 @@ Versioning Nomenclature
 
 *Fixed* for any bug fixes. 
 
+
+## upcoming changes 
+- improved the error handling messages for gbif queries with no results 
+- test for all columns of interest from gbif and assign values to missing columns if needed
+- improve error handling and message for buffer objects if no g or no h points are present 
+- increase the number of species available 
+- produce report -- priority 
+
+## Gamma 2.1.2
+updates from 2025-01-31
+
+Goals 
+gap analysis page 
+- add a wait spinner for buffer point generation 
+- development of the report 
+
+added 
+- add unique symbols to data based on source 
+- add the complete gap anlaysis workflow back in 
+- summary figure and plan text description 
+
+
 ## Gamma 2.1.1
 Updates from 2025 01 24 
 
-Goals 
-data eval page
-- remove index column from the tables 
-
-gap analysis page 
-- add a wait spinner for buffer point generation 
-- add lakes to water filter dataset 
-- add unique symbols to data based on source 
-- add the complete gap anlaysis workflow back in 
-- start development of the report 
-- 
-
 ### added 
 - legend to data evaluation page 
+- add lakes to water filter dataset 
+
 
 ### change 
 - ensure the year seaching  gbif data is working as expected
