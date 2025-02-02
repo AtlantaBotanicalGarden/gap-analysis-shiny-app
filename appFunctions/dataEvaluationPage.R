@@ -26,7 +26,7 @@ dataEvaluationPage <- function(){
               shiny::selectInput(
                 inputId = "genusSelect",
                 label = "Genus: ",
-                choices = unique(gbifBackbone$genus),
+                choices = sort(unique(gbifBackbone$genus)),
                 selected = "Magnolia"),
               # list of subspecies is generate for selection
               uiOutput("speciesSelect"),

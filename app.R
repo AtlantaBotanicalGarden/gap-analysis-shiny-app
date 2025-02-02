@@ -1087,6 +1087,27 @@ server <- function(input, output, session) {
     removeModal() # Remove the modal dialog
   })
   
+
+  # generate the report  ---------------------------------------------------
+    ### pet_report_dl ----
+    output$downloadReport <- downloadHandler(
+      filename = function() {
+        # debug_msg("pet_report_dl")
+        paste0("gap_analysis_", Sys.Date(), ".html")
+      },
+      content = function(file) {
+        rmarkdown::render("reportTemplate.Rmd",
+                          output_file = file, 
+                          params = list(
+                              points = gapPoints(),
+                              pointsBuffer = pointsBuffer()
+                          ),
+                          envir = new.env(),
+                          intermediates_dir = tempdir())
+      }
+    )
+  
+  
   
   # test print  --------------------------------------------------------------
 

@@ -26,7 +26,7 @@ gapAnalysisPage <- function(){
           accordion_panel(
             "Export Map",
             p("placeholder for future functionality"),
-            actionButton("exportGapMap", "Download Report")
+            downloadLink("downloadReport", "Download Report")
           )
         )
       ),

@@ -3,18 +3,17 @@ shinyApp(
     sliderInput("slider", "Slider", 1, 100, 50),
     downloadButton("report", "Generate report")
   ),
-  
-  
   server = function(input, output) {
     output$report <- downloadHandler(
       # For PDF output, change this to "report.pdf"
-      filename = paste0( "_GapAnalysis_report.html",
+      filename = "report2.html",
       content = function(file) {
         # Copy the report file to a temporary directory before processing it, in
         # case we don't have write permissions to the current working dir (which
         # can happen when deployed).
-        tempReport <- file.path(tempdir(), "reportTemplate.Rmd")
-        file.copy("appData/reportTemplate.Rmd", tempReport, overwrite = TRUE)
+        tempReport <- file.path(tempdir(), "testReport.Rmd")
+        print(list.files())
+        file.copy("testReport.Rmd", tempReport, overwrite = TRUE)
         
         # Set up parameters to pass to Rmd document
         params <- list(n = input$slider)

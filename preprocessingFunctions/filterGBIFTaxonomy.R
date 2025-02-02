@@ -13,7 +13,22 @@ filterData <- data |>
     "Magnolia",
     "Nothofagus",
     "Quercus",
-    "Rhododendron"))|>
+    "Rhododendron",
+    "Abies",
+    "Artocarpus",
+    "Attalea",
+    "Crataegus",
+    "Fraxinus",
+    "Gymnocladus",
+    "Ilex",
+    "Juglans",
+    "Prunus",
+    "Stewartia",
+    "Torreya",
+    "Ulmus",
+    "Zanthoxylum"
+    ))|>
   dplyr::select(-1) # drop the row index column
 # export 
 write_csv(x = filterData, file = "appData/gbifBackBone.csv")
+head(filterData)
