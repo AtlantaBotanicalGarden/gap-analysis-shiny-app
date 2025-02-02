@@ -694,8 +694,7 @@ server <- function(input, output, session) {
           TRUE ~ "default_icon" # Optional: Default icon if no conditions match
         )
       )
-    View(points)
-    
+
     ## G
     gGap <- points |>
         dplyr::filter(`Current Germplasm Type` == "G")
