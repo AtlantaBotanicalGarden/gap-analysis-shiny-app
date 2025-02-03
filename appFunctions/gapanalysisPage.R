@@ -25,7 +25,7 @@ gapAnalysisPage <- function(){
           ),
           accordion_panel(
             "Export Map",
-            p("placeholder for future functionality"),
+            p("Once gap analysis is complete, select link to download report. Reports will appear in computers download folder as a .html file."),
             downloadLink("downloadReport", "Download Report")
           )
         )

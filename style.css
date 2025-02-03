@@ -8,6 +8,7 @@
 }
 
 
+
 /* card background color */ 
 .shiny-plot-output {
   background-color: #216B7288;
@@ -15,11 +16,6 @@
   width: 100%;
 }
 
-body {
-  max-width: 900px;  /* Set your desired width */
-  margin: 0 auto;  /* Center the content */
-  font-family: sans-serif; /* Example font */
-}
 
 table {
   width: 100%; /* Make tables fill the container */

@@ -784,6 +784,11 @@ server <- function(input, output, session) {
       terra::intersect(land)
     })
   
+  # define buffer dist for html report 
+  bufferDist <- eventReactive(input$renderGapAnalaysis, {
+   as.numeric(input$bufferSize)
+  })
+  
   # Reactive expressions for H and G buffers
   h_buffer <- reactive({
     print("hBuffer")
@@ -904,7 +909,13 @@ server <- function(input, output, session) {
                   group = "GRS gaps",
                   color = grsexColor,
                   fillOpacity = 0.5,
-                  options = pathOptions(pane = "grsGap"))
+                  options = pathOptions(pane = "grsGap"))|>
+      addLegend(
+        position = "topright",
+        group = "GRS gaps",
+        colors = grsexColor,
+        labels = c("GRS gaps")
+      )
   })
   
 
@@ -1073,6 +1084,7 @@ server <- function(input, output, session) {
       modalDialog(
         title = "Run the gap analysis",
         "The following step is going to take a minute to run. Maybe more depending on the number of locations. If your ready press yes.",
+        "New map elements will appear once process is complete. Select outside of this box when you see those chances to continue.",
         footer = tagList(
           actionButton( "renderGapAnalaysis","Yes"),
           actionButton("return2", "Return to Gap Analysis Page"),
@@ -1088,19 +1100,25 @@ server <- function(input, output, session) {
   })
   
 
-  # generate the report  ---------------------------------------------------
-    ### pet_report_dl ----
+# generate the report  ---------------------------------------------------
     output$downloadReport <- downloadHandler(
       filename = function() {
+        taxon <- gapPoints()$`Taxon Name`[1]
         # debug_msg("pet_report_dl")
-        paste0("gap_analysis_", Sys.Date(), ".html")
+        paste0(taxon,"_gap_analysis_", Sys.Date(), ".html")
       },
       content = function(file) {
         rmarkdown::render("reportTemplate.Rmd",
                           output_file = file, 
                           params = list(
                               points = gapPoints(),
-                              pointsBuffer = pointsBuffer()
+                              pointsBuffer = pointsBuffer(),
+                              ersex = ersex_missingEcos(),
+                              grsex = grsex_buffers(),
+                              srsScore =  srsex(),
+                              ersScore = ersex_score(),
+                              grsScore = grsex_score(),
+                              bufferDist = bufferDist()
                           ),
                           envir = new.env(),
                           intermediates_dir = tempdir())
