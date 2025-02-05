@@ -14,8 +14,10 @@
 # testing 
 ## Magnolia acuminata
 # taxonkey <- 3153837
+# testing species
+# taxonkey <- 5939154
 # limit <- 400
-# year <- c(2015,2016)
+# year <- NULL
 # issues_not_allowed = NULL
 # allow_synonyms_bool = TRUE
 ## Getting GBIF Occurrence Data ##
@@ -77,7 +79,7 @@ query_gbif_occ <- function(taxonkey,
     parsed_response <- summary1
   }
   
-  if(is.null(parsed_response)){
+  if(is.null(parsed_response) || (is.data.frame(parsed_response) && nrow(parsed_response) == 0)){
     # empty output 
     output <- data.frame(matrix(nrow=1, ncol = 9))
     names(output) <- c("Accession Number","Taxon Name","Current Germplasm Type",
@@ -102,13 +104,25 @@ query_gbif_occ <- function(taxonkey,
     
     
     ## need a test here that checks for all expect columns in the data and if they are not present adds them wiht NA values assign
+    add_missing_columns <- function(df, col_names) {
+      for (col in col_names) {
+        if (!(col %in% names(df))) {
+          print(col)
+          df[[col]] <- NA  # Add missing column with NA values
+        }
+      }
+      return(df)
+    }
+    # need to test against the original names from the gbif pull
+    col_names <- c("key","scientificName","basisOfRecord",
+                   "year","decimalLatitude","decimalLongitude","locality",
+                   "recordedBy","issues")   
     
-    
-    
+    parsed_response <- add_missing_columns(parsed_response, col_names)
     
     # rename and assign type 
     ## locality column was not being pulled with low values.. adding condition to test 
-    if("locality" %in% names(parsed_response)){
+    # if("locality" %in% names(parsed_response)){
       output <- parsed_response |> 
         dplyr::select(
           "Accession Number" = key,
@@ -125,26 +139,26 @@ query_gbif_occ <- function(taxonkey,
           `Current Germplasm Type` != "LIVING_SPECIMEN" ~ "H",
           `Current Germplasm Type` == "LIVING_SPECIMEN" ~ "G"
         ))
-    }else{
-      output <- parsed_response |> 
-        dplyr::select(
-          "Accession Number" = key,
-          "Taxon Name" = scientificName,
-          "Current Germplasm Type" = basisOfRecord, 
-          "Collection Date" = year,
-          "Latitude" = decimalLatitude,
-          "Longitude" = decimalLongitude,
-          "Locality" = locality,
-          "Collector" = recordedBy,
-          issues
-        )|>
-        dplyr::mutate(`Current Germplasm Type` = case_when(
-          `Current Germplasm Type` != "LIVING_SPECIMEN" ~ "H",
-          `Current Germplasm Type` == "LIVING_SPECIMEN" ~ "G"
-        ),
-        "Locality" = NA
-        )
-    }
+    # }else{
+    #   output <- parsed_response |> 
+    #     dplyr::select(
+    #       "Accession Number" = key,
+    #       "Taxon Name" = scientificName,
+    #       "Current Germplasm Type" = basisOfRecord, 
+    #       "Collection Date" = year,
+    #       "Latitude" = decimalLatitude,
+    #       "Longitude" = decimalLongitude,
+    #       "Locality" = locality,
+    #       "Collector" = recordedBy,
+    #       issues
+    #     )|>
+    #     dplyr::mutate(`Current Germplasm Type` = case_when(
+    #       `Current Germplasm Type` != "LIVING_SPECIMEN" ~ "H",
+    #       `Current Germplasm Type` == "LIVING_SPECIMEN" ~ "G"
+    #     ),
+    #     "Locality" = NA
+    #     )
+    # }
     
     output$`Accession Number` <- as.character(output$`Accession Number`)
     return(output)

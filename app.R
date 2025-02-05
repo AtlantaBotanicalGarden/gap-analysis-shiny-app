@@ -258,6 +258,7 @@ server <- function(input, output, session) {
     # update map
     leafletProxy("map1")|>
       setView(lng = mean(gbifPoints$Longitude), lat = mean(gbifPoints$Latitude), zoom = 6)|>
+      clearGroup("GBIF")|>
       addCircleMarkers(
         data = gbifPoints,
         layerId = ~index,
@@ -288,6 +289,7 @@ server <- function(input, output, session) {
     # update map
     leafletProxy("map1")|>
       setView(lng = mean(gbifPoints$Longitude), lat = mean(gbifPoints$Latitude), zoom = 6)|>
+      clearGroup("GBIF")|>
       addCircleMarkers(
         data = gbifPoints,
         layerId = ~index,

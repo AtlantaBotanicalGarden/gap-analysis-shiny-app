@@ -102,7 +102,7 @@ species <- points$`Taxon Name`[1]
 
 ```
 
-# Summary of results for `r  species` 
+# Summary of results for `r  species`
 
 The gap analysis was conducted using a total of `r totalPoints` observations. Of these `r germplasmPoints` were germplasm records and `r referncePoints` were reference records.
 
@@ -110,7 +110,7 @@ The relationship between these observation types is recorded by the the Sampling
 
 Evaluating the spatial relationship of these observations at a buffer distance of `r bufferDist` km resulted in a Geographic representativeness score of `r grs` and a ecological representativeness score of `r ers`.
 
-# Map 
+# Map
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=8}
 # inital map for gap analysis page
@@ -135,8 +135,12 @@ map2 <-  leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16)) |>
     addMapPane("grsGap", zIndex = 405) |>
     addMapPane("allBuffers", zIndex = 410) |>
     addMapPane("pointsH", zIndex = 415) |>   # Higher zIndex for points1
-    addMapPane("pointsG", zIndex = 420) |>
-    # add point objects
+    addMapPane("pointsG", zIndex = 420)
+
+# test for and add H points 
+if(nrow(hGap) > 0){
+  map2 <- map2 |>
+        # add point objects
     addCircleMarkers(
         data = hGap,
         group = "Reference Records",
@@ -147,7 +151,18 @@ map2 <-  leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16)) |>
         weight = 1,
         fillOpacity = 1,
         label = hLabels
-      ) |>
+      )|>
+      # add buffer objects
+      addPolygons(data = h_buffer,
+                  group = "Buffers",
+                  color = combinedColor[1],
+                  fillOpacity = 0.5,
+                  options = pathOptions(pane = "allBuffers"))
+}
+# test for and add H points 
+if(nrow(gGap) > 0){
+  map2 <- map2 |>
+    # add point objects
     addCircleMarkers(
         data = gGap,
         group = "Germplasm Records",
@@ -159,17 +174,14 @@ map2 <-  leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16)) |>
         fillOpacity = 1,
         label = gLabels
       )|>
-  # add buffer objects
-      addPolygons(data = h_buffer,
-                  group = "Buffers",
-                  color = combinedColor[1],
-                  fillOpacity = 0.5,
-                  options = pathOptions(pane = "allBuffers"))|>
+    # add buffers 
       addPolygons(data = g_buffer,
-                  group = "Buffers",
-                  color = combinedColor[2],
-                  fillOpacity = 0.5,
-                  options = pathOptions(pane = "allBuffers"))|>
+              group = "Buffers",
+              color = combinedColor[2],
+              fillOpacity = 0.5,
+              options = pathOptions(pane = "allBuffers"))
+}
+map2 <- map2 |>
       #add grs map
       clearGroup("GRS gaps")|>
       addPolygons(data = grsex,
@@ -184,18 +196,6 @@ map2 <-  leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16)) |>
                   fillOpacity = 0.5,
                   popup = ~ECO_NAME,
                   options = pathOptions(pane = "ersGap"))|>
-    # add all legends
-    ## legends for unique icons by sources 
-    # addLegend(
-    #     position = "topright",
-    #     colors = gbif_GapMap,
-    #     labels = c("GBIF Reference", "GBIF Germplasm")
-    #   )|>
-    #   addLegend(
-    #     position = "topright",
-    #     colors = upload_GapMap,
-    #     labels = c("Upload Reference", "Upload Germplasm")
-    #   )|>
     addLegend(
         position = "topright",
         # group = "GRS gaps",
