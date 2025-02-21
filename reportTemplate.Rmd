@@ -1,0 +1,345 @@
+---
+title: Ex situ Gap Analysis
+author: Report generate from the [GAMMA application](https://atlantabg.shinyapps.io/GAMMA)
+output:
+  html_document:
+      css: style.css
+date: "date: `r Sys.Date()`"
+params:
+  points: NULL
+  pointsBuffer: NULL
+  ersex: NULL 
+  grsex: NULL
+  srsScore: NULL
+  ersScore: NULL
+  grsScore: NULL
+  bufferDist: NULL
+---
+
+```{=html}
+<style type="text/css">
+.main-container {
+  max-width: 2800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+pacman::p_load("leaflet","data.table", "tidyr", "dplyr","plotly","DT","RColorBrewer", "readr")
+
+# source some global data 
+source("utilities/loadGlobalVariables.R")
+# adding paths to the image features 
+
+### function for control number of character after the decimal place 
+sigfig <- function(vec, n=2){ 
+### function to round values to N significant digits
+# input:   vec       vector of numeric
+#          n         integer is the required sigfig  
+# output:  outvec    vector of numeric rounded to N sigfig
+
+formatC(signif(vec,digits=n), digits=n,format="fg", flag="#") 
+
+} 
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# processing steps for map 
+points <- params$points
+pointBuffer <- params$pointsBuffer
+ersex <- params$ersex 
+grsex <- params$grsex
+srsScore <- params$srsScore
+ersScore <- params$ersScore
+grsScore <- params$grsScore
+bufferDist <- params$bufferDist
+# process points layers 
+# spilt out the G and H points
+# assign icon for visualization 
+points <- points |>
+  dplyr::mutate(
+    # icon = dplyr::case_when(
+    #   `Current Germplasm Type` == "G" & source == "GBIF" ~ icon_paths$g_gbif, # Use & for vectorized AND
+    #   `Current Germplasm Type` == "H" & source == "GBIF" ~ icon_paths$h_gbif, # Use & for vectorized AND
+    #   `Current Germplasm Type` == "G" & source == "upload" ~ icon_paths$g_upload, # Corrected source name
+    #   `Current Germplasm Type` == "H" & source == "upload" ~ icon_paths$h_upload, # Corrected source name
+    #   TRUE ~ "default_icon" # Optional: Default icon if no conditions match
+    # ),
+    color = case_when(
+          `Current Germplasm Type` == "H" ~ combinedColor[1],
+          `Current Germplasm Type` == "G" ~ combinedColor[2]
+        )
+  )
+## G
+gGap <- points |>
+    dplyr::filter(`Current Germplasm Type` == "G")
+gLabels <- lapply(gGap$popup, htmltools::HTML)
+## H
+hGap <- points |>
+    dplyr::filter(`Current Germplasm Type` == "H")
+hLabels <- lapply(hGap$popup, htmltools::HTML)
+
+
+# h buffers
+h_buffer <- terra::aggregate(
+    pointBuffer[pointBuffer$`Current Germplasm Type` == "H", ]
+  )
+#G buffers  
+g_buffer<- terra::aggregate(
+    pointBuffer[pointBuffer$`Current Germplasm Type` == "G", ]
+  )
+
+# generate the written summary 
+srs <- as.numeric(srsScore) |> round(digits = 2)
+grs <- as.numeric(grsScore) |> round(digits = 2)
+ers <- as.numeric(ersScore) |> round(digits = 2)
+fcs <- mean(c(srs,grs,ers), na.rm = TRUE) |> round(digits = 2)
+totalPoints <- nrow(points)
+referncePoints <- nrow(points[points$`Current Germplasm Type` == "H",])
+germplasmPoints <- nrow(points[points$`Current Germplasm Type` == "G",])
+species <- points$`Taxon Name`[1]
+
+# generate the figure 
+# define the base table
+plotDF <- data.frame(class = c(
+  "Sampling Representativeness Score",
+  "Ecological Representativeness Score",
+  "Geographic Representativeness Score",
+  "Final Representativeness Score"),
+  score = c(0,0,0,0))
+
+# assign values based on the presence of specific output values
+plotDF$score[1] <- srs
+plotDF$score[2] <- grs
+plotDF$score[3] <- ers
+# assign the fcsex score
+plotDF$score[4] <- fcs
+
+# assign color based on the score
+plotDF <- plotDF|>
+  dplyr::mutate(rank = case_when(
+    score <= 25 ~ "Urgent Priority",
+    score > 25 & score <= 50 ~ "High Priority",
+    score > 50 & score <= 75 ~"Medium Priority",
+    score > 75 ~ "Low Priority"
+  ),
+  colors = case_when(
+    rank == "Urgent Priority" ~ "#ffb4b3",
+    rank ==  "High Priority" ~ "#ffd380",
+    rank == "Medium Priority"~ "#ffff80",
+    rank == "Low Priority" ~ "#a8d2a8"
+  )
+)
+
+```
+
+# Summary of results for `r  species`
+
+The gap analysis was conducted using a total of `r totalPoints` records. Of these `r germplasmPoints` were germplasm records and `r referncePoints` were reference records.
+<br> 
+
+The relationship between these observation types is recorded by a sampling representativeness score. 
+<br> 
+A buffer size of `r bufferDist` was used to generate the results for the ecological and geographic representativeness score. 
+
+The average for these three scores is used to calculate a final exsitu conservation score. 
+
+**Sampling Representativeness Score**: `r srs`.
+<br>
+**Geographic representativeness score**: `r grs`
+<br>
+**Ecological representativeness score**: `r ers`.
+<br>
+**Final conservation score**: `r fcs`. 
+
+Definitions of ex situ gap analysis scores are below.
+
+
+# Map
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.width=12, fig.height=8}
+# inital map for gap analysis page
+map2 <-  leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16)) |>
+    addProviderTiles("OpenStreetMap", group = "OpenStreetMap") |>
+    addProviderTiles("Esri.WorldTopoMap", group = "Topography") |>
+    addProviderTiles("Esri.WorldImagery", group = "Imagery")|>
+    addLayersControl(
+      position = "topleft",
+      overlayGroups = c("Reference Records",
+                        "Germplasm Records",
+                        "Buffers",
+                        "GRS gaps",
+                        "ERS gaps"),
+      baseGroups = c("OpenStreetMap",
+                     "Topography",
+                     "Imagery"),
+      options = layersControlOptions(collapsed = FALSE)
+    )|>
+    hideGroup(c("GRS gaps","ERS gaps")) |> # keeping enabled for now
+    addMapPane("ersGap", zIndex = 400) |>  # Lower zIndex for polygons
+    addMapPane("grsGap", zIndex = 405) |>
+    addMapPane("allBuffers", zIndex = 410) |>
+    addMapPane("pointsH", zIndex = 415) |>   # Higher zIndex for points1
+    addMapPane("pointsG", zIndex = 420)
+
+# test for and add H points 
+if(nrow(hGap) > 0){
+  map2 <- map2 |>
+        # add point objects
+    addCircleMarkers(
+        data = hGap,
+        group = "Reference Records",
+        radius = 4,
+        color = "white",
+        fillColor = ~color,
+        stroke = TRUE,
+        weight = 1,
+        fillOpacity = 1,
+        label = hLabels
+      )|>
+      # add buffer objects
+      addPolygons(data = h_buffer,
+                  group = "Buffers",
+                  color = combinedColor[1],
+                  fillOpacity = 0.5,
+                  options = pathOptions(pane = "allBuffers"))
+}
+# test for and add H points 
+if(nrow(gGap) > 0){
+  map2 <- map2 |>
+    # add point objects
+    addCircleMarkers(
+        data = gGap,
+        group = "Germplasm Records",
+        radius = 4,
+        color = "white",
+        fillColor = ~color,
+        stroke = TRUE,
+        weight = 1,
+        fillOpacity = 1,
+        label = gLabels
+      )|>
+    # add buffers 
+      addPolygons(data = g_buffer,
+              group = "Buffers",
+              color = combinedColor[2],
+              fillOpacity = 0.5,
+              options = pathOptions(pane = "allBuffers"))
+}
+map2 <- map2 |>
+      #add grs map
+      clearGroup("GRS gaps")|>
+      addPolygons(data = grsex,
+                  group = "GRS gaps",
+                  color = grsexColor,
+                  fillOpacity = 0.5,
+                  options = pathOptions(pane = "grsGap")) |>
+      # add ersex map
+      addPolygons(data = ersex_missingEcos(),
+                  group = "ERS gaps",
+                  color = ersexColor,
+                  fillOpacity = 0.5,
+                  popup = ~ECO_NAME,
+                  options = pathOptions(pane = "ersGap"))|>
+    addLegend(
+        position = "bottomleft",
+        # group = "GRS gaps",
+        colors = combinedColor,
+        labels = c("Reference", "Germplasm")
+      )|>
+      addLegend(
+        position = "topright",
+        group = "GRS gaps",
+        colors = grsexColor,
+        labels = c("GRS gaps")
+      )|>
+      addLegend(
+        position = "topright",
+        group = "ERS gaps",
+        colors = ersexColor,
+        labels = c("ERS gaps")
+      )
+
+
+map2
+```
+
+# Gap Analysis Scores 
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.width=12, fig.height=4}
+#define the display order of the plot
+xform <- list(categoryorder = "array",
+              categoryarray = c("Sampling Representativeness Score",
+                                "Ecological Representativeness Score",
+                                "Geographic Representativeness Score",
+                                "Final Representativeness Score"))
+
+# generate a plotly figure
+fig <- plot_ly(
+  data = plotDF,
+  x = ~class,
+  y = ~score,
+  marker = list(color = c(plotDF$colors)),
+  type = "bar"
+)|>
+  layout(title = "Gap Analysis Ex Situ Conservation Summary",
+        xaxis = xform,
+        yaxis = list(title = "",
+                     range = c(0,100))
+        )
+# print figure
+fig
+    
+```
+
+
+# Table of gap analysis Data
+
+The following table contains all the records that were used to generate the gap analysis results.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+colSelect <- points |>
+  as.data.frame()|>
+  dplyr::select(
+    `Accession Number`,
+    `Taxon Name`,
+    `Current Germplasm Type`,
+    `Collection Date` ,
+    `source`,
+    `Locality`,
+    `Collector`,
+    `Latitude` ,
+    "Longitude"
+  )
+
+DT::datatable(colSelect,
+              rownames = FALSE)
+```
+
+### Definitions of occurrence data categories
+       
+**Germplasm Records (G)** : Occurrences in which a living sample (via plant or seed) is present in an (*ex situ*), conservation system (i.e., botanical garden, seed bank, genebank, etc.).
+
+**Reference Records (H)** : Occurrences that have a supporting herbarium or other reference record.
+    ### Sampling Representativeness Score (SRS)
+
+**Ex situ**: The Sampling Representativeness Score *ex situ* (SRS ex situ) calculates the ratio of germplasm accessions (G) available in *ex situ* repositories to reference/voucher (H) records for each taxon.
+
+### Geographic Representativeness Score (GRS)
+
+**Ex situ**: The Geographic Representativeness Score *ex situ* (GRS ex situ) uses a user defined km-radius buffer created around each G collection coordinate point to estimate geographic areas already well collected within the distribution of each taxon, also created using buffers around H reference points. This is calculated as the proportion of the distribution covered by the G buffers.
+
+
+### Ecological Representativeness Score (ERS)
+
+**Ex situ**: The Ecological Representativeness Score ex situ (ERS ex situ) calculates the proportion of terrestrial ecoregions represented within the G buffered areas out of the total number of ecoregions occupied by the potential distribution.
+
+### Final Conservation Score (FCS)
+
+**Ex situ**: The Final Conservation Score *ex situ* (FCS ex situ) was derived by calculating the average of the three *ex situ* conservation metrics.
+
+**Prioritization using FSC**
+
+In considering the analysis of multiple species, FSC may be used to aid prioritize species action with Urgent Priority (UP) for further conservation action assigned when FCS < 25, High Priority (HP) assigned when 25 ≤ FCS < 50, Medium Priority (MP) when 50 ≤ FCS < 75, and Low Priority (LP) when FCS ≥75.
+

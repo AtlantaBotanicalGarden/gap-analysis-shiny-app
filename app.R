@@ -6,7 +6,7 @@
 library(shiny)
 library(bslib)
 library(ggplot2)
-library(shinipsum)
+# library(shinipsum)
 library(leaflet)
 library(DT)
 library(readr)
@@ -24,80 +24,17 @@ library(plotly)
 library(sf)
 library(tidyterra)
 library(leaflet.extras)
+library(rhandsontable)
 
-# source modules --------------------------------------------------------
+
+# source functions  -------------------------------------------------------
 lapply(list.files(
-  path = "modules/",
+  path = "appFunctions/",
   pattern = ".R",
   full.names = TRUE),
   source)
 
-# source UI or Server only functions ------------------------------------
-lapply(list.files(
-  path = "appFunctions",
-  pattern = ".r",
-  full.names = TRUE),
-  source)
-
-# global variables -----------------------------------------
-gbifBackbone <- read_csv("appData/gbifBackBone.csv")
-ecoRegions <- terra::vect("appData/ecoregionsSimplified.gpkg")
-# column name structure 
-## use this once we have the file 
-JSONdata <- fromJSON('appData/data_validation.json')
-valid_data_structure <- JSONdata[[1]]
-
-
-expectedNames <- c("Accession Number",	"Taxon Name",	"Current Germplasm Type",	"Collection Date",
-                   "Latitude",	"Longitude",	"Locality",	"Collector")
-tempTable <- read.csv("dataToPreProcess/Magnolia_acuminata_data.csv")|>
-  dplyr::select(-c("genus","species", "issues"))|>
-  sf::st_as_sf(coords = c("longitude","latitude"), crs = 4326, remove = FALSE)
-
-names(tempTable) <- c(expectedNames ,"geometry")
-
-
-
-names(tempTable) <- expectedNames
-# 
-# move this to a function !!!
-map1 <- leaflet::leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16))|>
-  addTiles()|> 
-  # layer control groups should not be set at the map proxy level as they will overwrite the existing element.
-  addLayersControl( 
-    position = "topleft",
-    overlayGroups = c("GBIF", "Upload Dataset"),
-    options = layersControlOptions(collapsed = TRUE)
-  )|> 
-  leaflet.extras::addDrawToolbar(
-    targetGroup = 'draw',
-    polylineOptions = FALSE,
-    rectangleOptions = FALSE,
-    circleOptions = FALSE,
-    markerOptions = FALSE,
-    circleMarkerOptions = FALSE,
-    editOptions = leaflet.extras::editToolbarOptions())
-#     editOptions = editToolbarOptions(edit = FALSE, selectedPathOptions = selectedPathOptions()))
-# 
-map2 <- leaflet::leaflet(options = leafletOptions(minZoom = 3, maxZoom = 16))|>
-  addTiles()|>
-  addMapPane("points", zIndex = 420) |>
-  addMapPane("buffers", zIndex = 410)|>
-  addMapPane("gaps", zIndex = 405) |> # shown below ames_circles%>% # shown below ames_circles
-  addLayersControl( 
-    position = "topleft",
-    overlayGroups = c("Reference Records",
-                      "Germplasm Records",
-                      "Buffers",
-                      "GRS gaps",
-                      "ERS gaps"),
-    options = layersControlOptions(collapsed = FALSE))
-# |>
-#   leaflet::hideGroup(c("GRS gaps", "ERS gaps"))
-
-
-
-
+source("utilities/loadGlobalVariables.R")
 
 # UI ----------------------------------------------------------------------
 # testing starting with a fluid page. 
@@ -123,322 +60,78 @@ ui <- fluidPage(
               "This application is under active development. If you experience a loss of connection while using the application please refresh your page or try again at a different time. We apologize for any inconvience.")
     ),
   ## navbarPage --------------------------------------------------------------
-  ### primary container for the application. 
+  ### primary container for the application.
   page_navbar(
+    id = "main_navbar",
     title = "Gap Analysis and Metacollection Management",
     bg ="#52b788",
     window_title = "GAMMA Tool",
     position = "static-top",
-    # footer = p("this is footer content? Not very good at the moment"),
-    # set some space between the Application title and the tab selectors 
+    # set some space between the Application title and the tab selectors
     nav_spacer(),
-  ## Data Evaluation ---------------------------------------------------------
-  nav_panel(
-    title = "Data Evaluation",
-      # define row for containing the map feaut
-      # defeine the sidebar element
-      layout_sidebar(
-        height = "700px",
-      # sidebar feature
-        sidebar = sidebar(
-          position = "left",
-          accordion(
-            open = FALSE,
-            accordion_panel(
-              # user selects the geneus 
-              "1. Select Taxon",
-              shiny::selectInput(
-                inputId = "genusSelect",
-                label = "Genus: ",
-                choices = unique(gbifBackbone$genus),
-                selected = "Magnolia"),
-              # list of subspecies is generate for selection 
-              uiOutput("speciesSelect"),
-              # when possible the option for var subsp is listed
-              uiOutput("taxonRank"),
-              # final filter of sub species it provided 
-              uiOutput("speciesInfraspecific"),
-              # print the current taxon name 
-              textOutput("currentSpecies")
-            ),
-            accordion_panel(
-              "2. Download and Display GBIF data ",
-              tags$br(),
-              tags$strong("GBIF Taxon ID:"),  textOutput("gbiftaxonid"),
-              checkboxInput("allowSyn", "Allow Synonyms in Data", TRUE),
-              # p(tags$a(href = "https://docs.google.com/spreadsheets/d/1BeDUBCg2BJ1DYpW47bxYH8p8CJAVqgM5rafyz81RoOc/edit#gid=1735583299", "View GBIF Issue Codes ", target = "_blank")),
-              actionButton("gbifPull", "Download Data from Gbif"),
-              textInput("issueCodes", 
-                        label = tags$a(href = "https://docs.google.com/spreadsheets/d/1BeDUBCg2BJ1DYpW47bxYH8p8CJAVqgM5rafyz81RoOc/edit#gid=1735583299",
-                                       "View GBIF Issue Codes ", target = "_blank"), "see link below for options"),
-              tags$br(),
-              # shinycssloaders::withSpinner(
-                tags$strong("Download Details:"),  textOutput("gbifDownloadSpecifics"),
-              # ),
-              tags$br(),
-              actionButton("gbifToMap", "Add GBIF to map")
-            ),
-            accordion_panel(
-              "3. Upload Your own data",
-              p(tags$a(href = "https://docs.google.com/spreadsheets/d/1BeDUBCg2BJ1DYpW47bxYH8p8CJAVqgM5rafyz81RoOc/edit?usp=sharing", "View Data Format Example", target = "_blank")),
-              fileInput("upload", "Upload a file"),
-              tags$p("Testing for expected column names"),
-              textOutput("validateColNames"),
-              actionButton("uploadToMap", "add uploaded to map")
-            ),
-            accordion_panel(
-              "4. Remove Data from Map ",
-              "Selecting a button will remove a specific layer from the map. The toggle buttons in the top left corner of the map can be uses to hide specific layers.",
-              actionButton("removeGBIF", "Remove all GBIF data"),
-              actionButton("removeUpload", "Remove uploaded data")
-            ),
-            accordion_panel(
-              "5. Move data to Gap Analysis",
-              "Select the button below with gather all GBIF and uploaded datasets and add them to the Gap Analysis Map.",
-              actionButton("compileDatasets", "Compile Data For Gap Analysis")
-              ),
-            accordion_panel(
-                "6. Troubleshooting",
-                textOutput("testPrint"),
-              ),
-            
-            
-          )
-        ),
-        # main panel features
-        card(
-          card_header("Map of Downloaded and Uploaded Datasets"),
-          leaflet::leafletOutput("map1"),
-          # card_footer("Description of the map? ")
-        )
-      ),
-    navset_card_tab(
-        height = 450,
-        full_screen = TRUE,
-        title = "Tabular Data of the Records",
-        nav_panel(
-          "GBIF_table",
-          downloadButton("download1", "Download the GBIF data"),
-          card_title("GBIF Records"),
-          shinycssloaders::withSpinner(
-          DTOutput("mapTableGBIF")),
-        ),
-        nav_panel(
-          "Uploaded Data",
-          downloadButton("download2", "Download the Uploaded data"),
-          card_title("Uploaded Records"),
-          DTOutput("mapTableUpload"),
-        )
-      )
-      ### add a tab section here for evaluating GBIF or uploaded record 
-      # tags$p("**note**: currently this auto populates once a genus species is selected. Once we transistion to uploading data or grabing data from gbif and uploading users will have to 
-      #        use a button to add content to this table"),
-      # DTOutput("mapTable"),
-      # downloadButton("download1", "Download the current table")
-    ), ## end data analysis page
-
-  ## Gap Analysis ------------------------------------------------------------
-  nav_panel(
-    title = "Gap Analysis",
-    h2("Gap Analysis"),
-    # p("On this page individuals will be able to "),
-    # br(),
-    # tags$ul(
-    #   tags$li("Utilize the dataset generated on the first Data Analysis page"),
-    #   tags$li("Select a specific buffer size"),
-    #   tags$li("Evaluate data on the map"),
-    #   tags$li("Generate a statistical summary of the gap analysis"),
-    #   tags$li("Export the results of the gap analysis")
-    # ),
-    layout_sidebar(
-      # sidebar feature
-      height="600px", # does not seem to actively effect this
-      sidebar = sidebar(
-        position = "right",
-        accordion(
-          accordion_panel(
-            "Add Points to Map",
-            actionButton("addGapPoints", "Add records to the map")
-          ),
-          accordion_panel(
-            "Select Buffer Size",
-            selectInput("bufferSize",
-                        "Select Buffer Distances in KM",
-                        choices = c(1, 5, 10,20,50),
-                        selected = 50)
-          ),
-          accordion_panel(
-            "Run Gap Analysis",
-            actionButton("createBuffersGap", "1. Create Buffers"),
-            tags$br(),
-            actionButton("generateGapMaps", "2. Create Gap Maps Layers"),
-            tags$br(),
-            actionButton("generateGapSummary", "3. Generate Summary Figure")
-          ),
-          accordion_panel(
-            "Export Map",
-            p("placeholder for future functionality"),
-            actionButton("exportGapMap", "Download the current map")
-          )
-        )
-      ),
-      # main panel features
-      card(
-        card_header("Map of Gap Analysis Results"),
-        leaflet::leafletOutput("map2"),
-        # card_footer("Description of the map? ")
-      )
+  # ## Data Evaluation ---------------------------------------------------------
+    nav_panel( # have to define the 'nav' elements outside of the function
+      title = "Data Evaluation",
+      # all the ui elements store in appFunction 
+      dataEvaluationPage(),
     ),
-    navset_card_tab(
-        height = 450,
-        full_screen = TRUE,
-        title = "Results of the Gap Analysis",
-        nav_panel(
-          "Gap Analysis Results",
-          plotlyOutput('gapAnalysisResults')
-        ),
-        nav_panel(
-          "Input Data",
-          DTOutput("mapTable2"),
-        ),
-
-    )
-  ),## end gap analysis page
-  ## landing page panel ------------------------------------------------------
-  nav_panel(
-    title = "About",
-    # card(full_screen = TRUE,
-    #      h3("Project Summary"),
-    #      p(shinipsum::random_text(nwords = 100))
-    # ),
-    br(),
-    tags$blockquote("The GAMMA tool will allow users to quantify and assess the completeness of recent collections made, as well as enable meta collection communities to assess the current ex situ conservation status and collection gaps across all participating collections.", cite = "Hadley Wickham"),
-    br(),
-    card(full_screen = TRUE,
-         h2("Gap Analysis Method"),
-         p("This version of the Gap Analysis conservation assessment evaluates the ex situ conservation status of a taxon, combines these metrics into an integrated assessment, and calculates an indicator metric that can be compared across taxa.",
-         "The quantitative and spatial outputs demonstrate the state of conservation by highlighting where gaps in protection exist. The methods are fully described in Carver et al. (2021). Articles by Ramirez-Villegas et al. (2010), Castañeda-Álvarez and Khoury et al. (2016), and Khoury et al. (2019a, b; 2020))"),
-        
-         h3("Definitions of occurrence data categories"),
-         p(strong("Germplasm Records (G)")," : Occurrences in which a living sample (via plant or seed) is present in an ",em("ex situ")," conservation system (i.e., botanical garden, seed bank, genebank, etc.). "),
-         p(strong("Reference Records (H)")," : Occurrences that have a supporting herbarium or other reference record."),
-         
-         
-         h3("Definitions of conservation gap analysis scores"),
-        p(strong("The Sampling Representativeness Score ") ,em("ex situ"), "(SRS ex) calculates the ratio of germplasm accessions (G) available in ", em("ex situ")," repositories to reference (H) records for each taxon, making use of all compiled records irrespective of whether they include coordinates."),
-        p(strong("The Geographic Representativeness Score ") ,em("ex situ"), "(GRS ex situ) uses 50-km-radius buffers created around each G collection coordinate point to estimate geographic areas already well collected within the potential distribution models of each taxon and then calculates the proportion of the potential distribution model covered by these buffers."),
-        p(strong("The Ecological Representativeness Score ") ,em("ex situ"), "(ERS ex situ) calculates the proportion of terrestrial ecoregions (25) represented within the G buffered areas out of the total number of ecoregions occupied by the potential distribution model."),
-        p(strong("The  Final Conservation Score "), em("ex situ")," (FCS ex situ) was derived by calculating the average of the three ",em("ex situ")," conservation metrics."),
+  ## Gap Analysis -------- 
+    nav_panel(
+      title = "Gap Analysis",
+      gapAnalysisPage()
     ),
-         
-    fluidRow(
-      column(12,
-             div(em("For any questions or feedback please reach out to Maintainer of the Website @ there email.com"),
-                 style="text-align:left"))
+    nav_panel(
+      title = "About",
+      aboutPage(),
     ),
-    h2("Project Background"),
-    p(style="text-align: center;",
-      "This project was led by Alanta Botanical Garden in collaboration with the IMLS GCC Growing
-      Metacollections team which includes individuals from ",
-      tags$a(href = "https://mortonarb.org/", "The Morton Arboretum", target = "_blank"),
-      ", ",
-      tags$a(href = "https://sdbg.org/", "San Diego Botanic Garden", target = "_blank"),
-      ", ",
-      tags$a(href = "https://www.montgomerybotanicalgardens.com/", "Montgomery Botanical Gardens at Oak Park", target = "_blank"),
-      ", ",
-      tags$a(href = "https://www.smith.edu/", "Smith College", target = "_blank"),
-      ", ",
-      tags$a(href = "https://www.auburn.edu/", "Auburn University", target = "_blank"),
-      ", ",
-      tags$a(href = "https://www.lotusland.org/", "Lotus Land", target = "_blank"),
-      ".",
-      tags$br(),
-      tags$strong("This work is made possible by the Institute of Museum and Library Services ",
-                  tags$a(href = "https://www.imls.gov/", "(MG-252894-OMS-23).", target = "_blank"),
-                  "." ),
-    ),
-    # fluidRow(
-    #   p("Multiple logos?"),
-    #   column(3,
-    #          div(img(src="temp.png", alt="Logo 2", align="center", width="60%"), style="text-align:center")),
-    #   column(3,
-    #          div(img(src="temp.png", alt="Logo 2", align="center", width="60%"), style="text-align:center")),
-    #   column(3,
-    #          div(img(src="temp.png", alt="Logo 3", align="center", width="50%"), style="text-align:center")),
-    #   column(3,
-    #          div(img(src="temp.png", alt="Logo 4", align="center", width="40%"), style="text-align:center"))
-    # ),
-    br(),
-    fluidRow(
-      # p("Or a single logo?"),
-      column(2),
-      column(8,
-             div(img(src="Metacollections project logo_color.png", alt="Logo 2", align="center", width="60%"), style="text-align:center")),
-      column(2),
-    ),
-    
-    card(full_screen = TRUE,
-         h3("Learn More"),
-         p(random_text(nwords = 300)),
-         br()
-    ),
-    hr(),
-    h2("Who We Are"),
-    p("This website is the result of a collaboration among the following individuals and institutions:"),
-    # fluidRow(
-    #   column(3,
-    #          strong("Alanta Botanical Garden"),
-    #          p(tags$a(href = "https://atlantabg.org/article/emily-e-d-coffey-ph-d/", "Emily E. D. Coffey, Ph.D", target = "_blank")),
-    #          p(tags$a(href = "https://atlantabg.org/article/jean-linsky-m-sc/", "Jean Linsky, M.Sc.", target = "_blank")),
-    #          p("etc...")
-    #   ),
-    #   column(3,
-    #          strong("Other organizations and people as needed"),
-    #          p("Superstar 1"),
-    #          p("Superstar 2")
-    #   ),
-    # ),
-  ),
-  nav_spacer(),
-
-  ## Links -------------------------------------------------------------------
-    nav_menu(
-      title = "External Links",
-      align = "right",
-      nav_item(tags$a("Source Code", href = "https://github.com/Jonathan-Gore/gap-analysis-shiny-app"), target="_blank"),
-      nav_item(tags$a("Alanta Botanical Garden", href = "https://atlantabg.org/"), target="_blank")
-      ) # edd nav bar links
-  )## end navbar page
+    nav_spacer(),
+    # reference links
+    links()
+  )## end page_navbar
 )## end ui
   
 
 # server ----------------------------------------------------------------
-server <- function(input, output) {
-  # UI select Subspecies 
+server <- function(input, output, session) {
+  #
+  # the server elements for fit as well inside the functions. This probably has
+  # to do with the namespace and modules... leave it be for now and look to organize 
+  # code that works into functions for simplicity when possible. 
+  #
+
+  # initalize the map -------------------------------------------------------
+  output$map1 <- leaflet::renderLeaflet(generateMap1())
+  
+  # GBIF accodion and data processing -----------------------------------------------------------
+  ## taxon select --- 
+  ### UI select Subspecies
   output$speciesSelect = renderUI({
-    # filter the data 
+    # filter the data
     genusData <- gbifBackbone |>
       dplyr::filter(genus == as.character(input$genusSelect))
-    # define selector 
-    selectInput("speciesSelect", "Select a species", choices = sort(genusData$specificEpithet), selected = )
+    # define selector
+    selectInput("speciesSelect", "Select a species", 
+                choices = sort(genusData$specificEpithet),
+                selected = )
   })
-  # UI select variaty/subspec
+  ### UI select variaty/subspec
   output$taxonRank = renderUI({
     # filter the data
     filteredData <- gbifBackbone |>
       dplyr::filter(genus == as.character(input$genusSelect)) |>
       dplyr::filter(specificEpithet == as.character(input$speciesSelect))
     # define selector
-    selectInput("taxonRank", "Select a taxon rank", choices = filteredData$taxonRank, selected = )
+    selectInput("taxonRank", "Select a taxon rank",
+                choices = filteredData$taxonRank, selected = )
   })
-  # UI select sub species feature
+  #### UI select sub species feature
   output$speciesInfraspecific = renderUI({
     # filter the data
     filteredData2 <- gbifBackbone |>
       dplyr::filter(genus == as.character(input$genusSelect)) |>
       dplyr::filter(specificEpithet == as.character(input$speciesSelect))|>
       dplyr::filter(taxonRank == as.character(input$taxonRank))
-      
+
     # define selector
     selectInput("speciesInfraspecific", "Select a infraspecific epithet", choices = filteredData2$infraspecificEpithet, selected = )
   })
@@ -450,14 +143,12 @@ server <- function(input, output) {
     # pass the object to render
     name
   })
-  
-  # pull the gbif id from the selection 
-  ### might be nice to have a single generic function that takes input parameters for all selections. 
+  ## pull the gbif id from the selection
   output$gbiftaxonid <- renderText({
     f1 <- gbifBackbone |>
       dplyr::filter(genus == as.character(input$genusSelect)) |>
       dplyr::filter(specificEpithet == as.character(input$speciesSelect))
-    
+
     if(as.character(input$taxonRank) == "species"){
       f1 <- gbifBackbone |>
         dplyr::filter(genus == as.character(input$genusSelect)) |>
@@ -465,42 +156,64 @@ server <- function(input, output) {
         dplyr::filter(taxonRank == as.character(input$taxonRank))
       f1$taxonID[1]
     }else{
-      f1 <- gbifBackbone |> 
+      f1 <- gbifBackbone |>
         dplyr::filter(taxonRank == as.character(input$taxonRank))|>
-        dplyr::filter(infraspecificEpithet == as.character(input$speciesInfraspecific)) 
+        dplyr::filter(infraspecificEpithet == as.character(input$speciesInfraspecific))
       f1$taxonID[1]
     }
-    
-  })
 
-  # Download data from GBIF -------------------------------------------------
-  gbifData <- eventReactive(input$gbifPull, {
-
-    if(as.character(input$taxonRank) == "species"){
-      f1 <- gbifBackbone |>
-        dplyr::filter(genus == as.character(input$genusSelect)) |>
-        dplyr::filter(specificEpithet == as.character(input$speciesSelect)) |>
-        dplyr::filter(taxonRank == as.character(input$taxonRank))
-      taxonID <- f1$taxonID[1]
-    }else{
-      f1 <- gbifBackbone |> 
-        dplyr::filter(taxonRank == as.character(input$taxonRank))|>
-        dplyr::filter(infraspecificEpithet == as.character(input$speciesInfraspecific)) 
-      taxonID <- f1$taxonID[1]
-    }
-
-    # define params
-    initialPull <- query_gbif_occ(taxonkey = taxonID,
-                   allow_synonyms_bool = TRUE)
-
-    # filter to specific layers
-    structureData <- etl_gbif_occ_data(gbif_occurrence_df = initialPull,
-                                       valid_data_structure = valid_data_structure)
-
-    structureData
   })
   
-  # 
+  
+  # Reactive value to store the uploaded data
+  gbifData <- reactiveVal(NULL)
+
+  ## Download data from GBIF
+  observeEvent(input$gbifPull, {
+   # define all input variables
+   ## taxon key
+   if(as.character(input$taxonRank) == "species"){
+     f1 <- gbifBackbone |>
+       dplyr::filter(genus == as.character(input$genusSelect)) |>
+       dplyr::filter(specificEpithet == as.character(input$speciesSelect)) |>
+       dplyr::filter(taxonRank == as.character(input$taxonRank))
+     taxonID <- f1$taxonID[1]
+   }else{
+     f1 <- gbifBackbone |>
+       dplyr::filter(taxonRank == as.character(input$taxonRank))|>
+       dplyr::filter(infraspecificEpithet == as.character(input$speciesInfraspecific))
+     taxonID <- f1$taxonID[1]
+   }
+   # synonym
+   synonym <- input$allowSyn
+   # download limit
+   downloadLimit <- input$numberGBIFDownload
+   # issues
+   issueCodes <- input$issueCodes
+   # year
+   if(input$useYear){
+     year <- c(input$startYear,input$endYear)
+   }else{
+     year <- NULL
+   }
+ #   
+ #   
+ #   # define params
+     initialPull <- query_gbif_occ(taxonkey = taxonID,
+                    allow_synonyms_bool = synonym,
+                    limit = downloadLimit,
+                    year = year,
+                    # issues_not_allowed = issueCodes
+                    )
+     # force character to joins later on.
+     initialPull$`Accession Number` <- as.character(initialPull$`Accession Number`)
+     initialPull$source <- "GBIF"
+     initialPull$index <- seq(from = 20000, to = 20000+nrow(initialPull)-1, by = 1 )
+
+     gbifData(initialPull)
+   })
+ # 
+ #  ## Produce a text output to show the results 
   output$gbifDownloadSpecifics <- renderText({
     if(is.null(gbifData())){
       "There is no data available on GBIF for this species"
@@ -508,221 +221,9 @@ server <- function(input, output) {
       paste0("The query returned ", nrow(gbifData()), " records.")
     }
   })
-
-  # gbif map elements -------------------------------------------------------
-  # list to store the selections for tracking
-  data_of_click <- reactiveValues(clickedMarker = list())
-  
-  # create spatial data for example/GBIF feature  -----------------------------------
-  sp1 <- observeEvent(input$gbifToMap, {
-    # generate spatial object 
-    pointsVals <- gbifData() |>
-      sf::st_as_sf(coords = c("Longitude","Latitude"), crs = 4326, remove = FALSE)|>
-      dplyr::mutate(
-        id = row_number(),
-        popup = paste0("<strong>", as.character(`Taxon Name`),"</strong>", # needs to be text
-                       "<br/><strong> Current Germplasm Type: </strong>", `Current Germplasm Type`,
-                       "<br/><b>Collector Name:</b> ", Collector,
-                       "<br/><b>Locality Description:</b> ", Locality,
-                       "<br/><b>ID:</b> ", id),
-        color = case_when(
-          `Current Germplasm Type` == "H" ~ "#1184d4",
-          `Current Germplasm Type` == "G" ~ "#6300f0"
-        )
-      )
-    
-
-
-    # update the map
-    leafletProxy("map1")|>
-      setView(lng = mean(pointsVals$Longitude), lat = mean(pointsVals$Latitude), zoom = 6)|>
-      addCircleMarkers(
-        data = pointsVals,
-        color = ~color,
-        stroke = FALSE,
-        fillOpacity = 0.9,
-        popup = ~popup,
-        group = "GBIF"
-      ) |>
-      # single legend for the GBIF features
-      addLegend(
-        position = "topright",
-        layerId = "GBIFlegend",
-        colors = c("#1184d4","#6300f0"),
-        labels = c("H","G"),
-        title = "GBIF Data",
-        opacity = 1,
-        group = "GBIF"
-      )
-  })
-  
-  
-  # draw selecting elements  ------------------------------------------------
-
-  observeEvent(input$map_marker_click, {
-    print(input$map_marker_click)
-  })  
-  
-  coords <- observeEvent(input$map_draw_new_feature, {
-    shape <-  input$map_draw_new_feature
-    # derive polygon coordinates and feature_type from shape input
-    polygon_coordinates <- shape$geometry$coordinates
-    print(polygon_coordinates)
-  })
-  output$testPrint <- shiny::renderPrint({print(coords)})
-  
-  
-  # penvs_drawBgExtent_module_map <- function(map, common) {
-  #   spp <- common$spp
-  #   curSp <- common$curSp
-  #   occs <- common$occs
-  #   
-  #   map %>% leaflet.extras::addDrawToolbar(
-  #     targetGroup = 'draw',
-  #     polylineOptions = FALSE,
-  #     rectangleOptions = FALSE,
-  #     circleOptions = FALSE,
-  #     markerOptions = FALSE,
-  #     circleMarkerOptions = FALSE,
-  #     editOptions = leaflet.extras::editToolbarOptions()
-  #   )
-    
-    # if (is.null(spp[[curSp()]]$procEnvs$bgExt)) {
-    #   map %>% clearAll() %>%
-    #     addCircleMarkers(data = occs(), lat = ~latitude, lng = ~longitude,
-    #                      radius = 5, color = 'red', fill = TRUE, fillColor = "red",
-    #                      fillOpacity = 0.2, weight = 2, popup = ~pop)
-    # } else {
-    #   map %>% clearAll() %>%
-    #     addCircleMarkers(data = occs(), lat = ~latitude, lng = ~longitude,
-    #                      radius = 5, color = 'red', fill = TRUE, fillColor = "red",
-    #                      fillOpacity = 0.2, weight = 2, popup = ~pop)
-    #   polys <- spp[[curSp()]]$procEnvs$bgExt@polygons[[1]]@Polygons
-    #   if (length(polys) == 1) {
-    #     xy <- list(polys[[1]]@coords)
-    #   } else {
-    #     xy <- lapply(polys, function(x) x@coords)
-    #   }
-    #   for (shp in xy) {
-    #     map %>%
-    #       addPolygons(lng = shp[, 1], lat = shp[, 2], weight = 4, color = "gray",
-    #                   group = 'bgShp')
-    #   }
-    # }
-  # }
-  
-  
-  # create spatial data for uploaded data  -----------------------------------
- observeEvent(input$uploadToMap, {
-    # generate spatial object 
-    pointsVals2 <- dataUpload()|>
-      sf::st_as_sf(coords = c("Longitude","Latitude"), crs = 4326, remove = FALSE)|>
-      dplyr::mutate(
-        popup = paste0("<strong>", as.character(`Taxon Name`),"</strong>", # needs to be text
-                       "<br/><strong> Type: </strong>", `Current Germplasm Type`,
-                       "<br/><b>Collector Name:</b> ", Collector,
-                       "<br/><b>Locality Description):</b> ", Locality),
-        color = case_when(
-          `Current Germplasm Type` == "H" ~ "#1184d4",
-          `Current Germplasm Type` == "G" ~ "#6300f0"
-        )
-      )
-    # spilt out the G and H points 
-    gVals2 <- pointsVals2 |>
-      dplyr::filter(`Current Germplasm Type` == "G")
-    hVals2 <- pointsVals2 |>
-      dplyr::filter(`Current Germplasm Type` == "H")
-    # update the map 
-    leafletProxy("map1")|>
-      setView(lng = pointsVals2$Longitude[1], lat = pointsVals2$Latitude[1], zoom = 6)|>
-      clearGroup(group = "Upload Dataset") |>
-      addCircleMarkers(
-        data = hVals2,
-        color = ~color,
-        stroke = TRUE,
-        fillOpacity = 0.9,
-        popup = ~popup,
-        group = "Upload Dataset"
-      ) |>
-      addCircleMarkers(
-        data = gVals2,
-        color = ~color,
-        stroke = TRUE,
-        fillOpacity = 0.9,
-        popup = ~popup,
-        group = "Upload Dataset"
-      ) |>
-      # single legend for the GBIF features
-      addLegend(
-        position = "topright",
-        layerId = "uploadlegend",
-        colors = c("#1184d4","#6300f0"),
-        labels = c("H","G"),
-        title = "Upload Dataset",
-        opacity = 1,
-        group = "Upload Dataset"
-      ) 
-  })
-  
-  penvs_drawBgExtent_module_map <- function(map, common) {
-    spp <- common$spp
-    curSp <- common$curSp
-    occs <- common$occs
-    
-    map %>% leaflet.extras::addDrawToolbar(
-      targetGroup = 'draw',
-      polylineOptions = FALSE,
-      rectangleOptions = FALSE,
-      circleOptions = FALSE,
-      markerOptions = FALSE,
-      circleMarkerOptions = FALSE,
-      editOptions = leaflet.extras::editToolbarOptions()
-    )
-    
-    if (is.null(spp[[curSp()]]$procEnvs$bgExt)) {
-      map %>% clearAll() %>%
-        addCircleMarkers(data = occs(), lat = ~latitude, lng = ~longitude,
-                         radius = 5, color = 'red', fill = TRUE, fillColor = "red",
-                         fillOpacity = 0.2, weight = 2, popup = ~pop)
-    } else {
-      map %>% clearAll() %>%
-        addCircleMarkers(data = occs(), lat = ~latitude, lng = ~longitude,
-                         radius = 5, color = 'red', fill = TRUE, fillColor = "red",
-                         fillOpacity = 0.2, weight = 2, popup = ~pop)
-      polys <- spp[[curSp()]]$procEnvs$bgExt@polygons[[1]]@Polygons
-      if (length(polys) == 1) {
-        xy <- list(polys[[1]]@coords)
-      } else {
-        xy <- lapply(polys, function(x) x@coords)
-      }
-      for (shp in xy) {
-        map %>%
-          addPolygons(lng = shp[, 1], lat = shp[, 2], weight = 4, color = "gray",
-                      group = 'bgShp')
-      }
-    }
-  }
-  
-  
-  
-  
-  ## GBIF 
-  observeEvent(input$removeGBIF, {
-    leafletProxy("map1")|>
-      clearGroup(group = "GBIF")|>
-      removeControl(layerId = "GBIFlegend") # doesn't seem to be working at the moment. Mugh
-      # not sure if I can remove the layer control element once it is added 
-  })
-  ## upload data
-  observeEvent(input$removeUpload, {
-    leafletProxy("map1")|>
-      clearGroup(group = "Upload Dataset")|>
-      removeControl(layerId = "uploadlegend") # doesn't seem to be working at the moment. Mugh
-    # not sure if I can remove the layer control element once it is added 
-  })
-
-  # Export the table from data processing page  -----------------------------------------------
-  # GBIF Data
+ # 
+ # 
+ #  ## GBIF Data
   output$download1 <- downloadHandler(
     filename = function() {
       # Use the selected dataset as the suggested file name
@@ -733,31 +234,147 @@ server <- function(input, output) {
       write.csv(gbifData(), file, row.names = FALSE)
     }
   )
+ #  
+ #  ## display in table
+ #  # Render the rhandsontable (only if data is available)
+  output$mapTableGBIF <- renderRHandsontable({
+    req(gbifData()) # Require data before rendering
+    rhandsontable(gbifData()) # dropping the source and index from the display?
+  })
+ #  
+ #  # Render the map (only if data is available)
+  observe({
+    req(gbifData()) # Require data before rendering
+    # generate point objects
+    gbifPoints <- createSpatialObject(gbifData())|>
+      dplyr::mutate(
+        color = case_when(
+          `Current Germplasm Type` == "H" ~ gbifColor[1],
+          `Current Germplasm Type` == "G" ~ gbifColor[2]
+        )
+      )
+    labels <- lapply(gbifPoints$popup, htmltools::HTML)
+
+    # update map
+    leafletProxy("map1")|>
+      setView(lng = mean(gbifPoints$Longitude), lat = mean(gbifPoints$Latitude), zoom = 6)|>
+      clearGroup("GBIF")|>
+      addCircleMarkers(
+        data = gbifPoints,
+        layerId = ~index,
+        group = "GBIF",
+        radius = 5,
+        color = "white",
+        fillColor = ~color,
+        stroke = TRUE,
+        weight = 1,
+        fillOpacity = 1,
+        label = labels
+      )
+  })
+ #  # 
+ #  # Observe changes in the table
+  observeEvent(input$mapTableGBIF, {
+    gbifData(hot_to_r(input$mapTableGBIF))
+
+    gbifPoints <- createSpatialObject(gbifData())|>
+      dplyr::mutate(
+        color = case_when(
+          `Current Germplasm Type` == "H" ~ gbifColor[1],
+          `Current Germplasm Type` == "G" ~ gbifColor[2]
+        )
+      )
+    labels <- lapply(gbifPoints$popup, htmltools::HTML)
+
+    # update map
+    leafletProxy("map1")|>
+      setView(lng = mean(gbifPoints$Longitude), lat = mean(gbifPoints$Latitude), zoom = 6)|>
+      clearGroup("GBIF")|>
+      addCircleMarkers(
+        data = gbifPoints,
+        layerId = ~index,
+        group = "GBIF",
+        radius = 5,
+        color = "white",
+        fillColor = ~color,
+        stroke = TRUE,
+        weight = 1,
+        fillOpacity = 1,
+        label = labels
+      )
+  })
+ #  # Reactive values to store selected markers
+  selectedGBIF <- reactiveValues(markers = NULL)
+
+  # INDIVIDUAL POINT SELECTION
+  # Observe marker clicks
+  observeEvent(input$map1_marker_click, {
+    click <- input$map1_marker_click
+    print(click)
+    # need a condition to prevent triggering from the upload selection
+    if(click$group == "GBIF" || click$group == "GBIF Selection"){
+      # # regenerateing the spatial data to try to resolve the removal of the inital layer on select
+      gbifData(hot_to_r(input$mapTableGBIF))
+      
+      gbifPoints <- createSpatialObject(gbifData())|>
+        dplyr::mutate(
+          color = case_when(
+            `Current Germplasm Type` == "H" ~ gbifColor[1],
+            `Current Germplasm Type` == "G" ~ gbifColor[2]
+          )
+        )
+      labels <- lapply(gbifPoints$popup, htmltools::HTML)
+    }
+ 
+
+    if(click$group == "GBIF"){
+      # add it to selected markers
+      selectedGBIF$markers <- c(selectedGBIF$markers, click$id)
+      # edit map
+      leafletProxy("map1") %>%
+        addCircleMarkers(
+          data = gbifPoints[gbifPoints$index == click$id, ],
+          layerId = ~index,
+          radius = 5,
+          color = "red",
+          fillOpacity = 0.8,
+          stroke = FALSE,
+          group = "GBIF Selection"
+        )
+    }
+    if(click$group == "GBIF Selection"){
+      # remove the item from selection
+      selectedGBIF$markers <- selectedGBIF$markers[selectedGBIF$markers != click$id]
+      # update the map
+      leafletProxy("map1") %>%
+        leaflet::clearGroup("GBIF Selection") |>
+        addCircleMarkers(
+          data = gbifPoints[gbifPoints$index %in% selectedGBIF$markers, ],
+          layerId = ~index,
+          radius = 5,
+          color = "red",
+          fillOpacity = 0.8,
+          stroke = FALSE,
+          group = "GBIF Selection"
+        )
+    }
+  })
   
-  output$download2 <- downloadHandler(
+  
+  # uploaded dataset processing -----------------------------------------------
+  
+  ## add a download functionality
+  output$downloadUpload <- downloadHandler(
     filename = function() {
       # Use the selected dataset as the suggested file name
-      paste0(input$genusSelect,"_",input$speciesSelect, "_data.csv")
+      paste0(input$genusSelect,"_",input$speciesSelect, "_uploaded_data.csv")
     },
     content = function(file) {
       # Write the dataset to the `file` that will be downloaded
       write.csv(dataUpload(), file, row.names = FALSE)
     }
   )
-  
-  
-
-  # read in the uploaded data -----------------------------------------------
-  dataUpload <- reactive({
-    req(input$upload)
-    
-    ext <- tools::file_ext(input$upload$name)
-    switch(ext,
-           csv = vroom::vroom(input$upload$datapath, delim = ","),
-           validate("Invalid file; Please upload a .csv file")
-    )
- 
-  })
+  ## testing column headers 
   output$validateColNames <- renderText({
     colNames <- names(dataUpload())
     vals <- c()
@@ -771,562 +388,645 @@ server <- function(input, output) {
     if(is.null(nonMatchedNames)){
       print("All column names match")
     }else{
-      print(paste0("The following columns are not present in the uploaded data ", nonMatchedNames))
+      print(nonMatchedNames)
     }
-    
-    
   })
+  # Reactive value to store the uploaded data
+  dataUpload <- reactiveVal(NULL)
   
-  # compile dataset for the gap analysis page  ------------------------------
-  ## popup to show that the compile dataset is working. ----
-  observeEvent(input$compileDatasets, {
-    # Show a modal when the button is pressed
-    shinyalert(title = "Data is Moving",
-               text = "Data is being gather and organized. Please continue your evaluation on the Gap Analysis page.",
-               type = "success")
-  })
-  ## generate the gapAnalysus input dataset ----
-  gapAnalysisInput <- reactive({
-    d1 <- NA
-    d2 <- NA
-    d3 <- NA
-    req(input$compileDatasets)
-    d1 <- try(gbifData()|>
-                dplyr::mutate(source = "GBIF",
-                              "Accession Number" = as.character(`Accession Number`),
-                              "Collection Date" = as.character(`Collection Date`)))
-    d2 <- try(dataUpload()|>
-                dplyr::mutate(source = "upload",
-                              "Accession Number" = as.character(`Accession Number`),
-                              "Collection Date" = as.character(`Collection Date`)))
-    d3 <- try(dplyr::bind_rows(d1,d2))
-    # both datasets 
-    if("data.frame" %in% class(d3)){
-      outputTable <- d3
+  observeEvent(input$upload, {
+    inFile <- input$upload
+    if(is.null(inFile)){
+      return(NULL)
     }
-    # upload olny
-    if("data.frame" %in% class(d2) && !"data.frame" %in% class(d1)){
-      outputTable <- d2
-    }
-    #gbif only 
-    if(!"data.frame" %in% class(d2) && "data.frame" %in% class(d1)){
-      outputTable <- d1
-    }
-    outputTable
-  })
-  
+    # Read the uploaded CSV file
+    uploaded_data <- vroom::vroom(inFile$datapath, delim = ",")
+    # remove any empty rows from the document 
+    uploaded_data <- uploaded_data[!is.na(uploaded_data$`Accession Number`), ]
 
-  # intial map on gap analysis page -----------------------------------------
+    # assign id as character 
+    uploaded_data$`Accession Number` <- as.character( uploaded_data$`Accession Number`)
+    uploaded_data$index <- seq(from = 1000, to = 1000 +nrow(uploaded_data) - 1, by = 1)
+    uploaded_data$source <- "upload"
+    # Update the reactive value with the uploaded data
+    dataUpload(uploaded_data)    
+  })
   
-  gapPoints <-  reactive({
-    # req(input$compileDatasets) ### transistion from using this as the que to sequentail outputs. 
-    gapAnalysisInput()|>
-      sf::st_as_sf(coords = c("Longitude","Latitude"), crs = 4326, remove = FALSE)|>
+  ## display in table
+  # Render the rhandsontable (only if data is available)
+  output$mapTableUpload <- renderRHandsontable({
+    req(dataUpload()) # Require data before rendering
+    rhandsontable(dataUpload())
+  })
+  
+  # Render the map (only if data is available)
+  observe({
+    req(dataUpload()) # Require data before rendering
+    # generate point objects 
+    uploadPoints <- createSpatialObject(dataUpload())|>
+          dplyr::mutate(
+            color = case_when(
+              `Current Germplasm Type` == "H" ~ uploadColor[1],
+              `Current Germplasm Type` == "G" ~ uploadColor[2]
+            )
+          )
+    labels <- lapply(uploadPoints$popup, htmltools::HTML)
+    
+    # update map 
+    leafletProxy("map1")|>
+      setView(lng = mean(uploadPoints$Longitude), lat = mean(uploadPoints$Latitude), zoom = 6)|>
+      addCircleMarkers(
+        data = uploadPoints,
+        layerId = ~index,
+        group = "Upload",
+        radius = 5,
+        color = "white",
+        fillColor = ~color,
+        stroke = TRUE,
+        weight = 1,
+        fillOpacity = 1,
+        label = labels
+        )
+  })
+  
+  # Observe changes in the table
+  observeEvent(input$mapTableUpload, {
+    dataUpload(hot_to_r(input$mapTableUpload))
+    
+    uploadPoints <- createSpatialObject(dataUpload())|>
       dplyr::mutate(
-        popup = paste0("<strong>", as.character(`Taxon Name`),"</strong>", # needs to be text
-                       "<br/><strong> Current Germplasm Type: </strong>", `Current Germplasm Type`,
-                       "<br/><b>Collector Name:</b> ", Collector,
-                       "<br/><b>Locality Description):</b> ", Locality,
-                       "<br/><b>Data Source:</b> ", source),
         color = case_when(
-          `Current Germplasm Type` == "H" ~ "#1184d4",
-          `Current Germplasm Type` == "G" ~ "#6300f0"
+          `Current Germplasm Type` == "H" ~ uploadColor[1],
+          `Current Germplasm Type` == "G" ~ uploadColor[2]
         )
       )
+    labels <- lapply(uploadPoints$popup, htmltools::HTML)
+    
+    # update map 
+    leafletProxy("map1")|>
+      setView(lng = mean(uploadPoints$Longitude), lat = mean(uploadPoints$Latitude), zoom = 6)|>
+      addCircleMarkers(
+        data = uploadPoints,
+        layerId = ~index,
+        group = "Upload",
+        radius = 5,
+        color = "white",
+        fillColor = ~color,
+        stroke = TRUE,
+        weight = 1,
+        fillOpacity = 1,
+        label = labels
+      )
   })
-  ## add points to map ---
-  observeEvent(input$addGapPoints, {
-    # # generate spatial object 
-    # spilt out the G and H points 
-    gGap <- gapPoints() |>
-      dplyr::filter(`Current Germplasm Type` == "G")
-    hGap <- gapPoints() |>
-      dplyr::filter(`Current Germplasm Type` == "H")
-    if(nrow(gGap)==0){
-      # update the map 
-      leafletProxy("map2")|>
-        setView(lng = mean(gapPoints()$Longitude), lat = mean(gapPoints()$Latitude), zoom = 6)|>
-        addCircleMarkers(
-          data = hGap,
-          color = ~color,
-          stroke = TRUE,
-          radius = 5,
-          fillOpacity = 0.9,
-          popup = ~popup,
-          group = "Reference Records"
-        )|>
-        # single legend for the GBIF features
-        addLegend(
-          position = "topright",
-          layerId = "referencelegend",
-          colors = c("#1184d4"),
-          labels = c("H"),
-          title = "Reference Records",
-          opacity = 1,
-          group = "Reference Records"
-        )
-    }else{
-      # update the map 
-      leafletProxy("map2")|>
-        setView(lng = mean(gapPoints()$Longitude), lat = mean(gapPoints()$Latitude), zoom = 6)|>
-        clearGroup("Reference Records")|>
-        clearGroup("Germplasm Records")|>      
-        addCircleMarkers(
-          data = hGap,
-          color = ~color,
-          stroke = FALSE,
-          radius = 5,
-          fillOpacity = 0.9,
-          popup = ~popup,
-          group = "Reference Records"
-        ) |>
-        addCircleMarkers(
-          data = gGap,
-          color = ~color,
-          stroke = FALSE,
-          radius = 5,
-          fillOpacity = 0.9,
-          popup = ~popup,
-          group = "Germplasm Records"
-        ) |>
-        # single legend for the GBIF features
-        addLegend(
-          position = "topright",
-          layerId = "referencelegend",
-          colors = c("#1184d4"),
-          labels = c("H"),
-          title = "Reference Records",
-          opacity = 1,
-          group = "Reference Records"
-        ) |>
-        addLegend(
-          position = "topright",
-          layerId = "germplasmalegend",
-          colors = c("#6300f0"),
-          labels = c("G"),
-          title = "Germplasm Records",
-          opacity = 1,
-          group = "Germplasm Records"
-        ) 
-    }
+  # Reactive values to store selected markers
+  selectedUpload <- reactiveValues(markers = NULL)
 
+  # INDIVIDUAL POINT SELECTION
+  # Observe marker clicks
+  observeEvent(input$map1_marker_click, {
+    click <- input$map1_marker_click
+
+    print(click$id)
+    print(click$group)
+    # define local varaible
+    uploadPoints <- dataUpload()
+    if(click$group == "Upload"){
+      # add it to selected markers
+      selectedUpload$markers <- c(selectedUpload$markers, click$id)
+      # edit map
+      leafletProxy("map1") %>%
+          addCircleMarkers(
+            data = uploadPoints |>
+              dplyr::filter(index == uploadPoints$index[click$id]) ,
+            layerId = ~index,
+            radius = 5,
+            color = "red",
+            fillOpacity = 0.8,
+            stroke = FALSE,
+            group = "Upload Selection"
+          )
+    }
+    if(click$group == "Upload Selection"){
+      # remove the item from selection
+      selectedUpload$markers <- selectedUpload$markers[selectedUpload$markers != click$id]
+      # update the map
+      leafletProxy("map1") %>%
+        leaflet::clearGroup("Upload Selection") |>
+        addCircleMarkers(
+          data = uploadPoints[uploadPoints$index %in% selectedUpload$markers, ],
+          layerId = ~index,
+          radius = 5,
+          color = "red",
+          fillOpacity = 0.8,
+          stroke = FALSE,
+          group = "Upload Selection"
+        )
+    }
   })
+
+  
+  
+  # combined table---------------------------------------------
+  ## take the selected data from both groups and use that to filter the two dataframes 
+  
+  combined_data <- reactiveVal(NULL)
+  
+  
+  # Combine the data sets only when the button is clicked
+  observeEvent(input$compileDatasets, {
+    if (!is.null(gbifData()) && !is.null(dataUpload())) {
+      # Both exist: combine
+        combined <- bind_rows(gbifData(), dataUpload())
+        print("both datasets 1")
+      # }, error = function(e) {
+      #   showNotification(paste("Error combining data:", e$message), type = "error")
+      #   NULL
+      # })
+    } else if (!is.null(gbifData())) {
+      # Only data1 exists
+      combined <- gbifData()
+      print("gbif only 1")
+    } else if (!is.null(dataUpload())) {
+      # Only data2 exists
+      combined <- dataUpload()
+      print("upload only 1")
+    } else {
+      # Neither exists
+      NULL
+    }
+    # returned a filtered dataset based on the map selection 
+    if(!is.null(combined)){
+      ## add the filtering data set back in 
+      uploadSelection <- NULL
+      gbifSelection <- NULL
+      print("filter on selection ")
+      if(!is.null(dataUpload())){
+        uploadSelection <- dataUpload()$index[selectedUpload$markers]
+        }
+      if(!is.null(gbifData())){
+        # g1 <- gbifData()
+        gbifSelection <- gbifData()$index[selectedGBIF$markers]
+        print(gbifSelection)
+      }
+      
+      if(!is.null(uploadSelection) && !is.null(gbifSelection)){
+        print("Both selection 2")
+        
+        # drop values before combining 
+        selectAccession <- c(uploadSelection,gbifSelection )
+        # drop accessions  
+        combined2 <- combined[!combined$index%in% selectAccession, ]
+        # generate object 
+        combined_data(combined2)
+      }else if(is.null(uploadSelection) && !is.null(gbifSelection)){
+        print("gbif selection 2 ")
+        # drop accessions  
+        combined2 <- combined[!combined$index%in% gbifSelection, ]
+        # generate object 
+        combined_data(combined2)
+      }else if(!is.null(uploadSelection) && is.null(gbifSelection)){
+        print( "upload selection 2")
+        # drop accessions  
+        combined2 <- combined[!combined$index%in% uploadSelection, ]
+        # generate object 
+        combined_data(combined2)
+      }else{
+        print("no selection 2")
+        # no selection 
+        combined_data(combined)
+      }
+      # generate object 
+      # print(combined_data)
+    }else{
+      combined_data(combined)
+    }
+  })
+  # develop the popup 
+  observeEvent(input$compileDatasets, {
+    # print(combined_data())
+    Sys.sleep(1)
+    ## show the popup selection
+    showModal(
+      modalDialog(
+        title = "Choose an Action",
+        "What would you like to do?",
+        footer = tagList(
+          downloadButton("download_csv", "Download your data"),
+          actionButton("continue", "Continue to gap analysis"),
+          actionButton("return", "Return to data evaluation")
+        ),
+        size = "l",
+        easyClose = FALSE
+      )
+    )
+  })
+  
+  
+  # Switch to Page 2 when "Continue" is clicked
+  observeEvent(input$continue, {
+    updateNavbarPage(session, "main_navbar", selected = "Gap Analysis")
+    removeModal() # Remove the modal dialog
+  })
+  # return to Page 1 when "Return" is clicked
+  observeEvent(input$return, {
+    removeModal() # Remove the modal dialog
+  })
+  
+  # download the combined data 
+  output$download_csv <- downloadHandler(
+    filename = function() {
+      # Use the selected dataset as the suggested file name
+      taxon <- combined_data()$`Taxon Name`
+      paste0(taxon,"_combined_data.csv")
+    },
+    content = function(file2) {
+      export <- combined_data()
+      # print(nrow(export))
+      # Write the dataset to the `file` that will be downloaded
+      write.csv(export, file2, row.names = FALSE)
+    }
+  )
+  
+  
+  
+  # Gap Analysis Page  ------------------------------------------------------
+  ## generate the gapAnalysus input dataset ----
 
   # Gap analysis method  ----------------------------------------------------
-  ## calculate the SRSex -- number of G points / total number of points 
-  ##buffer the points 
-  ## display the buffered objects on the map
-  ## calculate the GRSex -- total G buffer area / total area 
-  ## calculate the ERSex -- total number of ecorgions within the g buffer / total number of eco regions 
-  ## display data on a chart 
+  ## initialize map  
+  output$map2 <- leaflet::renderLeaflet(generateMap2())
+  ## populated table with the data 
+  observeEvent(input$continue, {
+    d1 <- combined_data()
+    # visualize table
+    output$mapTable2 <- renderDT(d1)
+  })
   
+  
+  # reactive Values are effective list objects... 
+  # gapPoints <- reactiveVal(NULL)
+  # generate gap points on input select 
+  gapPoints <- eventReactive(input$addGapPoints, {
+    print("gapPoints")
+    req(combined_data())
+    # 
+    
+    # generate spatial feature
+    createSpatialObject(combined_data())|>
+      dplyr::mutate(
+        color = case_when(
+          `Current Germplasm Type` == "H" ~ combinedColor[1],
+          `Current Germplasm Type` == "G" ~ combinedColor[2]
+        )
+      )
+  })
+  
+  # Observer to add points to the map when the button is clicked
+  ## for some reason this does not work if on the 'continue' button so leaving the add to maps button for now. 
+  observeEvent(gapPoints(),{
+    print("gapPoints to map")
+    req(gapPoints())
+    # assign vect object to a local variable 
+    points <- gapPoints() 
+    # spilt out the G and H points
+    # assign icon for visualization 
+    points <- points |>
+      dplyr::mutate(
+        icon = dplyr::case_when(
+          `Current Germplasm Type` == "G" & source == "GBIF" ~ icon_paths$g_gbif, # Use & for vectorized AND
+          `Current Germplasm Type` == "H" & source == "GBIF" ~ icon_paths$h_gbif, # Use & for vectorized AND
+          `Current Germplasm Type` == "G" & source == "upload" ~ icon_paths$g_upload, # Corrected source name
+          `Current Germplasm Type` == "H" & source == "upload" ~ icon_paths$h_upload, # Corrected source name
+          TRUE ~ "default_icon" # Optional: Default icon if no conditions match
+        )
+      )
 
-
-
+    ## G
+    gGap <- points |>
+        dplyr::filter(`Current Germplasm Type` == "G")
+    gLabels <- lapply(gGap$popup, htmltools::HTML)
+    # assign color/shape 
+  
+    
+    ## H
+    hGap <- points |>
+        dplyr::filter(`Current Germplasm Type` == "H")
+    hLabels <- lapply(hGap$popup, htmltools::HTML)
+    # test for presence and add features to the map 
+    if(nrow(gGap)!=0){
+      # add g points 
+      leafletProxy("map2") |>
+            setView(lng = mean(gGap$Longitude), lat = mean(gGap$Latitude), zoom = 6)|>
+            clearGroup("Germplasm Records") |>
+            addMarkers(data = gGap,
+                             layerId = ~index,
+                             # radius = 4,
+                             group = "Germplasm Records",
+                             icon = ~makeIcon( # Create the icon *here*
+                               iconUrl = icon, # Use the path column
+                               iconWidth = 10,
+                               iconHeight = 10
+                             ),
+                             label = gLabels,
+                             options = pathOptions(pane = "pointsG"))
+              # addLegend(
+              #   position = "topright",
+              #   layerId = "germplasmalegend",
+              #   colors = c(combinedColor[2]),
+              #   labels = c("G"),
+              #   title = "Germplasm Records",
+              #   opacity = 1,
+              #   group = "Germplasm Records"
+              # )
+    }
+    if(nrow(hGap)!=0){
+        # add h points 
+        leafletProxy("map2") |>
+          setView(lng = mean(hGap$Longitude), lat = mean(hGap$Latitude), zoom = 6)|>
+          clearGroup("Reference Records") |>
+          addMarkers(data = hGap,
+                   layerId = ~index,
+                   # radius = 4,
+                   group = "Reference Records",
+                   icon = ~makeIcon( # Create the icon *here*
+                     iconUrl = icon, # Use the path column
+                     iconWidth = 10,
+                     iconHeight = 10
+                   ),
+                   label = hLabels,
+                   options = pathOptions(pane = "pointsH"))
+          # addCircleMarkers(data = hGap,
+          #                  layerId = ~index,
+          #                  radius = 4,
+          #                  group = "Reference Records",
+          #                  color = "white",
+          #                  fillColor = ~color,
+          #                  stroke = TRUE,
+          #                  weight = 1,
+          #                  fillOpacity = 1,
+          #                  label = hLabels,
+          #                  options = pathOptions(pane = "pointsH")) |>
+          # addLegend(
+          #   position = "topright",
+          #   layerId = "referencelegend",
+          #   colors = c(combinedColor[1]),
+          #   labels = c("H"),
+          #   title = "Reference Records",
+          #   opacity = 1,
+          #   group = "Reference Records"
+          # )
+      }   
+  })
+  
   ## createBuffersGap --- 
   ## buffer points -----------------------------------------------------------
-  pointsBuffer <- eventReactive(input$createBuffersGap, {
+  pointsBuffer <- eventReactive(input$renderGapAnalaysis, {
+    print("pointsBuffer")
+    
+    ## so this will break if this is selected before the add to map... not worrying about it now 
     gapPoints()|>
       terra::vect()|>
-      terra::buffer(width = as.numeric(input$bufferSize) * 1000)
-    })
-  # aggregate buffers 
-  aggregateBuffers <-  eventReactive(input$createBuffersGap, {
-    pointsBuffer() |>
-      terra::aggregate()
+      terra::buffer(width = as.numeric(input$bufferSize) * 1000)|>
+      terra::intersect(land)
     })
   
-  # g buffer object 
-  ## sf objects because they are being added to the map 
-  gGapBuffer <- eventReactive(input$createBuffersGap, {
-    # g points 
-    pointsBuffer()|>
-      sf::st_as_sf()|>
-      dplyr::filter(`Current Germplasm Type` == "G")
+  # define buffer dist for html report 
+  bufferDist <- eventReactive(input$renderGapAnalaysis, {
+   as.numeric(input$bufferSize)
   })
-  # h buffer object
-  ## sf objects because they are being added to the map 
-  hGapBuffer <- eventReactive(input$createBuffersGap, {
-    pointsBuffer()|>
-      sf::st_as_sf()|>
-      dplyr::filter(`Current Germplasm Type` == "H")
-    })
   
-  ### update map with buffer features --- 
-  observeEvent(input$createBuffersGap, {
-    # aggregate buffer object to reduce complexity 
-    hbuf <- hGapBuffer() |> 
-      terra::vect() |>
-      terra::aggregate()|>
-      st_as_sf()
-    gbuf <- gGapBuffer() |> 
-      terra::vect() |>
-      terra::aggregate()|>
-      st_as_sf()
+  # Reactive expressions for H and G buffers
+  h_buffer <- reactive({
+    print("hBuffer")
     
+    req(pointsBuffer()) # Ensure pointsBuffer exists
+    # select h points and aggregate for visulization 
+    terra::aggregate(
+      pointsBuffer()[pointsBuffer()$`Current Germplasm Type` == "H", ]
+    )
+  })
+  
+  g_buffer <- reactive({
+    print("g buffer")
     
-    if(nrow(gbuf)!=0){
-      # update the map 
-      leafletProxy("map2")|>        
-        clearGroup("Buffers")|>
-        removeControl(layerId = "bufferLegend") |>
-        addPolygons(
-          data = hbuf,
-          group = "Buffers",
-          color = "blue",
-          fillOpacity = 0.9) |>
-        addPolygons(
-          data = gbuf,
-          group = "Buffers",
-          color = "purple",
-          fillOpacity = 0.9)|>
-        addLegend(
-          position = "topright",
-          layerId = "bufferLegend",
-          colors = c("blue", "purple"),
-          labels = c("Reference", "Germplasm"),
-          title = "Buffers",
-          opacity = 1,
-          group = "Buffers")
-    }else{
-      leafletProxy("map2")|>        
-        clearGroup("Buffers")|>
-        removeControl(layerId = "bufferLegend") |>
-        addPolygons(
-          data = hbuf,
-          group = "Buffers",
-          color = "blue",
-          fillOpacity = 0.9) |>
-        addLegend(
-          position = "topright",
-          layerId = "bufferLegend",
-          colors = c("blue"),
-          labels = c("Reference"),
-          title = "Buffers",
-          opacity = 1,
-          group = "Buffers")
-    }
-  })
-  
-  
-  
-  ## trimed ecoregion ---
-  # crop the ecoregions to full buffer object
-  allEcos <-  eventReactive(input$generateGapMaps, {
-    ecoRegions |>
-      terra::crop(aggregateBuffers())
-  })
-  # g area ecoregions 
-  gEcos <- eventReactive(input$generateGapMaps, {
-    if(nrow(gGapBuffer())>0){
-      gVals <- terra::vect(gGapBuffer())|>
-        terra::aggregate()
-      # crop to g buffers 
-      gEco <- allEcos() |>
-        terra::crop(gVals)
-    }else{
-      gEco <- allEcos()[0,]
-      }
-    gEco
-  })
-
-  ## generete gap maps -------------------------------------------------------
-  
-  ## ers gap Map ----  
-  ## return SF object because it's on the map 
-  ersexGap <- eventReactive(input$generateGapMaps, {
-    # get a unique list of values from eco buffers 
-    allEco1 <- unique(allEcos()$ECO_ID)
-    gEco1 <- unique(gEcos()$ECO_ID)
-    
-    # select ecos not in gEcos
-    gEco1 <- allEco1[!allEco1 %in% gEco1]
-    
-    # select eco not in the gEcoLayer 
-    gapEcos <- ecoRegions |>
-      tidyterra::filter(ECO_ID %in% gEco1)
-    # spatail object showing the ecoregions outside of the 
-    gapEcos |> st_as_sf()
-  })
-  
-  ## gap map ---  
-  grsexGap <- eventReactive(input$generateGapMaps, {
-    # format the buffer feature
-    gGapBuffer1 <-  terra::vect(gGapBuffer()) |>
-      terra::aggregate()
-    # difference 
-    gapBuffers2 <- aggregateBuffers() - gGapBuffer1
-    # set to sf for display on map 
-    gapBuffers2 |> st_as_sf()
-
+    req(pointsBuffer()) # Ensure pointsBuffer exists
+    # select h points and aggregate for visulation 
+    terra::aggregate(
+      pointsBuffer()[pointsBuffer()$`Current Germplasm Type` == "G", ]
+    )
   })
 
 
-  ## gap analysis data to the map ----------------------------------------------------------
-  ### update map with gap map features --- 
-  observeEvent(input$generateGapMaps, {
-        # update the map
-        leafletProxy("map2")|>
-          clearGroup("ERS gaps")|>
-          clearGroup("GRS gaps")|>
-          removeControl(layerId = "ersGapLegend") |>
-          removeControl(layerId = "bufferLegend") |>
-          # ers gap map layer
-          addPolygons(
-            data = ersexGap(),
-            color = "grey",
-            opacity = 0,
-            popup = ~ECO_NAME,
-            group = "ERS gaps",
-            fillOpacity = 0.9,
-            highlight = highlightOptions(
-                        weight = 3,
-                        fillOpacity = 0.4,
-                        color = "black",
-                        fillColor = "yellow",
-                        opacity = 0.4,
-                        bringToFront = TRUE,
-                        sendToBack = TRUE)
-          ) |>
-          # grsex gap layer
-          addPolygons(
-            data = grsexGap(),
-            color = "#d8b365",
-            opacity = 0.2,
-            group = "GRS gaps",
-            fillOpacity = 0.4)|>
-      addLegend(
-            position = "topright",
-            layerId = "ersGapLegend",
-            labels = c("Uncollected Ecoregions"),
-            title = "ERSex Gap",
-            colors = c("grey"),
-            opacity = 1,
-            group = "ERS gaps"
-          )|>
-      addLegend(
-        position = "topright",
-        layerId = "grsGapLegend",
-        labels = c("Areas outside of Gerplasm Buffer Range"),
-        title = "GRSex Gap",
-        colors = c("#d8b365"),
-        opacity = 1,
-        group = "GRS gaps"
-      )
-    #     # |>
-    #       # single legend for the GBIF features
-    #       # addLegend(
-    #       #   position = "topright",
-    #       #   colors = c("purple"),
-    #       #   labels = c("G"),
-    #       #   title = "Germplasm Records",
-    #       #   opacity = 1,
-    #       #   group = "G Buffers"
-    #       # )
+  ### update map with buffer features ---
+  observeEvent(pointsBuffer(), {
+    print("buffers to map")
+    
+    ## will need some error handling here. but for now just 
+    leafletProxy("map2")|>
+      clearGroup("Buffers")|>
+      addPolygons(data = h_buffer(),
+                  group = "Buffers",
+                  color = combinedColor[1],
+                  fillOpacity = 0.5,
+                  options = pathOptions(pane = "allBuffers"))|>
+      addPolygons(data = g_buffer(),
+                  group = "Buffers",
+                  color = combinedColor[2],
+                  fillOpacity = 0.5,
+                  options = pathOptions(pane = "allBuffers"))
   })
- 
   
-  
-  # observeEvent(input$createBuffersGap, {
-  #   
-  #   # ersmap 
-  #   ersMap <- ersexGap()
-  #   grsMap <- grsexGap()
-  #   
-  #   
-  #   # pull points for an sf condition statement
-  #   gGap <- gapPoints() |>
-  #     dplyr::filter(`Current Germplasm Type` == "G")
-  #   # gapAreas <- hGapBuffer - gGapBuffer
-  #   if(nrow(gGap)==0){
-  #     # update the map 
-  #     leafletProxy("map2")|>        
-  #       clearGroup("Buffers")|>
-  #       clearGroup("ERS gaps")|>
-  #       clearGroup("GRS gaps")|>
-  #       removeControl(layerId = "bufferLegend") |>
-  #       addPolygons(
-  #         data = hGapBuffer,
-  #         group = "Buffers",
-  #         color = "blue",
-  #         fillOpacity = 0.9
-  #       )|>
-  #       # ers gap map layer
-  #       addPolygons(
-  #         data = ersMap,
-  #         color = "grey",
-  #         opacity = 0.4,
-  #         popup = ~ECO_NAME, 
-  #         group = "ERS gaps",
-  #         fillOpacity = 0.9
-  #       ) |>
-  #       # grsex gap layer 
-  #       addPolygons(
-  #         data = grsMap,
-  #         color = "grey",
-  #         opacity = 0.2, 
-  #         group = "GRS gaps",
-  #         fillOpacity = 0.4) |>
-  #       # single legend for the GBIF features
-  #       addLegend(
-  #         position = "topright",
-  #         layerId = "bufferLegend",
-  #         colors = c("blue"),
-  #         labels = c("H"),
-  #         title = "Buffers",
-  #         opacity = 1,
-  #         group = "Buffers"
-  #       )
-  #   }else{
-  #     # update the map 
-  #     leafletProxy("map2")|>
-  #       clearGroup("Buffers")|>
-  #       clearGroup("ERS gaps")|>
-  #       clearGroup("GRS gaps")|>
-  #       removeControl(layerId = "bufferLegend") |>
-  #       removeControl(layerId = "ersGapLegend") |>
-  #       addPolygons(
-  #         data = hGapBuffer,
-  #         group = "Buffers",
-  #         color = "blue",
-  #         fillOpacity = 0.9
-  #       )|>
-  #       addPolygons(
-  #         data = gGapBuffer,
-  #         group = "Buffers",
-  #         color = "purple",
-  #         fillOpacity = 0.9
-  #       )|>
-  #       # ers gap map layer
-  #       addPolygons(
-  #         data = ersMap,
-  #         color = "grey",
-  #         opacity = 0.4,
-  #         popup = ~ECO_NAME, 
-  #         group = "ERS gaps",
-  #         fillOpacity = 0.4,
-  #         highlight = highlightOptions(
-  #           weight = 3,
-  #           fillOpacity = 0.4,
-  #           color = "black",
-  #           fillColor = "yellow",
-  #           opacity = 0.4,
-  #           bringToFront = TRUE,
-  #           sendToBack = TRUE),)|>
-  #       # grs gap map layer
-  #       addPolygons(
-  #         data = grsMap,
-  #         color = "grey",
-  #         opacity = 0.4, 
-  #         group = "GRS gaps",
-  #         fillOpacity = 0.8) |>
-  #       # legend
-  #       addLegend(
-  #         position = "topright",
-  #         layerId = "bufferLegend",
-  #         colors = c("blue", "purple"),
-  #         labels = c("Reference", "Germplasm"),
-  #         title = "Buffers",
-  #         opacity = 1,
-  #         group = "Buffers"
-  #       )|>
-  #       addLegend(
-  #         position = "topright",
-  #         layerId = "ersGapLegend",
-  #         labels = c("Uncollected Ecoregions"),
-  #         title = "ERSex Gap",
-  #         colors = c("grey"),
-  #         opacity = 1,
-  #         group = "ERS gaps"
-  #       )
-  #     # |>
-  #       # single legend for the GBIF features
-  #       # addLegend(
-  #       #   position = "topright",
-  #       #   colors = c("purple"),
-  #       #   labels = c("G"),
-  #       #   title = "Germplasm Records",
-  #       #   opacity = 1,
-  #       #   group = "G Buffers"
-  #       # )
-  #   }
-  # })
-  
-  
-  ## generateGapSummary --- 
   ## srs ex ------------------------------------------------------------------
-  srsex <- eventReactive(input$generateGapSummary,{
+  srsex <- reactive({
+    require(gapPoints())
+    print("srsex")
+    p1 <- gapPoints()
     # select g points
-    gGap <- gapPoints() |>
-      dplyr::filter(`Current Germplasm Type` == "G")
-    # calculate score 
+    gGap <- p1[p1$`Current Germplasm Type` == "G", ]
+    # calculate score
     gs <- nrow(gGap)
     if(gs == 0){
       srsScore <- 0
     }else(
-      srsScore <- (nrow(gGap)/ nrow(gapPoints()))*100
+      srsScore <- (nrow(gGap)/ nrow(p1))*100
     )
     # return score
     srsScore
   })
+  # print statement to test reactivity 
+  observeEvent(srsex(), {
+    req(srsex())
+    print("SRSEX Score:")
+    print(head(srsex())) # Or whatever you want to print
+  })
+  
   ## GRSex  ------------------------------------------------------------------
-  grsex <- eventReactive(input$generateGapSummary, {
+  # Reactive expressions for generating GRSex gap buffer object 
+  grsex_buffers <- eventReactive(input$renderGapAnalaysis, {   
+    
+    req(h_buffer()) # Ensure pointsBuffer exists
+    print("grsex_buffers")
+    # Sys.sleep(1)
+    # calculate areas outside of gbuffer
+    grsexVals <- terra::erase(x = h_buffer(),
+                            y = g_buffer())
+    print(head(grsexVals))
+    grsexVals
+  })
+  # generate the score 
+  grsex_score <- eventReactive(input$renderGapAnalaysis, { 
+    req(pointsBuffer()) # Ensure pointsBuffer exists
+    req(grsex_buffers())
+    print("grsex score Calculations")
+    p1 <- pointsBuffer()
+    g1 <- grsex_buffers()
     # total area
-    totalArea <- aggregateBuffers() |>
+    totalArea <- p1 |>
+      terra::aggregate() |> 
       terra::expanse(unit="km")
-    # calculate areas outside of gbuffer 
-    gapArea <- grsexGap()  |>
-      terra::vect() |>
+    print("total area")
+    print(totalArea)
+    # calculate areas outside of gbuffer
+    gapArea <- g1 |>
+      terra::aggregate() |>
       terra::expanse(unit="km")
-    #calculate GRSex score 
-    ## total - gap area give the area covered by G buffers. 
+    print("gap area")
+    print(gapArea)
+    #calculate GRSex score
+    ## total - gap area give the area covered by G buffers.
     difference <- totalArea - gapArea
     if(difference == 0){
       grsScore <- 0
     }else{
-      grsScore <- ((totalArea - gapArea)/totalArea)*100   
+      grsScore <- ((totalArea - gapArea)/totalArea)*100
     }
+    print(paste0("The grsex score :", grsScore))
     grsScore
-    
   })
   
-  ## ERSex -------------------------------------------------------------------
-  ersex <- eventReactive(input$generateGapSummary, {
+  
+  ### update map with buffer features ---
+  observeEvent(grsex_buffers(), {
+    print("grsex_buffers to map")
     
-    #calculate ersex score 
-    gs <- nrow(gEcos())
-    if(gs == 0){
-      ersScore <- 0
-    }else(
-      ersScore <- (nrow(gEcos())/nrow(allEcos()))*100
-    )
-    ersScore
+    leafletProxy("map2")|>
+      clearGroup("GRS gaps")|>
+      addPolygons(data = grsex_buffers(),
+                  group = "GRS gaps",
+                  color = grsexColor,
+                  fillOpacity = 0.5,
+                  options = pathOptions(pane = "grsGap"))|>
+      addLegend(
+        position = "topright",
+        group = "GRS gaps",
+        colors = grsexColor,
+        labels = c("GRS gaps")
+      )
   })
+  
+
+  # ERSex -------------------------------------------------------------------
+  ## determine a all eco regions of interest 
+  ersex_Ecos <- eventReactive(input$renderGapAnalaysis, { 
+    req(gapPoints())
+    # define point objects
+    d1 <- gapPoints() |>
+      terra::vect()
+    print("d1")
+    # print(head(d1))
+    # determine the eco regions present in the
+    inter <- terra::intersect(x = d1, y = ecoRegions) 
+    print("inter")
+    # print(head(inter))
+    
+    # select ecoregions of interest
+    ecoCodes <- unique(inter$ECO_NAME)
+    # select ecoregions of interest
+    ecos <- ecoRegions[ecoRegions$ECO_NAME %in% ecoCodes, ]
+    print("ecos")
+    # print(head(ecos))
+    ecos
+  })
+  # determine missing ecos 
+  ersex_missingEcos <- eventReactive(input$renderGapAnalaysis, { 
+    req(ersex_Ecos())
+    currentEcos <- ersex_Ecos()
+    print("current Ecos")
+    # print(currentEcos$ECO_NAME)
+    # determine ecoregions with G buffers  
+    gs <- terra::aggregate(g_buffer())
+    gEco <- terra::intersect(x = gs, y = currentEcos)
+    print("gEcos")
+    print(gEco$ECO_NAME)
+    
+    # Pull unique Ids and subset the G values 
+    ecoIDs <- unique(currentEcos$ECO_NAME[!currentEcos$ECO_NAME %in% gEco$ECO_NAME])
+    print("ecoIDs")
+    # print(ecoIDs)
+    # select from 
+    missingEco <- currentEcos[currentEcos$ECO_NAME %in% ecoIDs]
+    print("totalmissing")
+    # print(missingEco$ECO_NAME)
+    # return  
+    missingEco
+  })
+  
+  # generate the score 
+  ersex_score <- eventReactive(input$renderGapAnalaysis, {
+    req(ersex_missingEcos())
+    ecos1 <- ersex_missingEcos()
+    # 
+    allEcos <- ersex_Ecos()
+    print("missing ecos -- score")
+    # print(ecos1)
+
+
+    nEco <- nrow(allEcos)
+    gEco <- nEco - nrow(ecos1)
+    ers <- min(c(100, (gEco/nEco)*100))
+    print("ERS")
+    print(paste0("ers score ",ers))
+    ers
+  })
+  # update the map 
+  observeEvent(ersex_missingEcos(), {
+    print("ers map")
+    leafletProxy("map2")|>
+      clearGroup("ERS gaps")|>
+      addPolygons(data = ersex_missingEcos(),
+                  group = "ERS gaps",
+                  color = ersexColor,
+                  fillOpacity = 0.5,
+                  popup = ~ECO_NAME,
+                  options = pathOptions(pane = "ersGap"))
+  })
+
+
   ### render gap analysis plot ------------------------------------------------
-    gapAnalysisResultsFigure<- eventReactive(input$generateGapSummary,{
-      # define the base table 
+    gapAnalysisResultsFigure<- eventReactive(input$renderGapAnalaysis,{
+      # define the base table
       df <- data.frame(class = c(
         "Sampling Representativeness Score",
         "Ecological Representativeness Score",
-        "Geographic Representativeness Score", 
+        "Geographic Representativeness Score",
         "Final Representativeness Score"
       ),
       score = c(0,0,0,0))
-      # assign values based on the presence of specific output values 
-      df$score[1] <- try(srsex())
-      df$score[2] <- try(ersex())
-      df$score[3] <- try(grsex())
-      # assign the fcsex score 
-      df$score[4] <- try(mean(df[1:3, "score"], na.rm = TRUE))
-      
-      # assign color based on the score 
+      # assign values based on the presence of specific output values
+      df$score[1] <- as.numeric(try(srsex()))
+      df$score[2] <- as.numeric(try(ersex_score()))
+      df$score[3] <- as.numeric(try(grsex_score()))
+      # assign the fcsex score
+      df$score[4] <- as.numeric(try(mean(df[1:3, "score"], na.rm = TRUE)))
+
+      # assign color based on the score
       df <- df|>
         dplyr::mutate(rank = case_when(
           score <= 25 ~ "Urgent Priority",
-          score > 25 & score <= 50 ~ "High Priority", 
+          score > 25 & score <= 50 ~ "High Priority",
           score > 50 & score <= 75 ~"Medium Priority",
           score > 75 ~ "Low Priority"
-        ), 
+        ),
         colors = case_when(
           rank == "Urgent Priority" ~ "#ffb4b3",
           rank ==  "High Priority" ~ "#ffd380",
@@ -1338,12 +1038,12 @@ server <- function(input, output) {
       xform <- list(categoryorder = "array",
                     categoryarray = c("Sampling Representativeness Score",
                                       "Ecological Representativeness Score",
-                                      "Geographic Representativeness Score", 
+                                      "Geographic Representativeness Score",
                                       "Final Representativeness Score"))
-      
-      # generate a plotly figure 
+
+      # generate a plotly figure
       fig <- plot_ly(
-        data = df, 
+        data = df,
         x = ~class,
         y = ~score,
         marker = list(color = c(df$colors)),
@@ -1351,24 +1051,95 @@ server <- function(input, output) {
       )|>
         layout(title = "Gap Analysis Ex Situ Conservation Summary",
               xaxis = xform,
-              yaxis = list(title = "", 
+              yaxis = list(title = "",
                            range = c(0,100))
               )
-    # print figure 
+    # print figure
       fig
     }
   )
   output$gapAnalysisResults <- renderPlotly(gapAnalysisResultsFigure())
-
-# poorly ordered renders --------------------------------------------------
-  output$map1 <- leaflet::renderLeaflet(map1)
-  output$mapTableGBIF <- renderDT(gbifData())
-  output$mapTableUpload <- renderDT(dataUpload())
   
-  output$image <- renderImage(random_image())
-  output$map2<- leaflet::renderLeaflet(map2)
-  output$mapTable2 <- renderDT(gapAnalysisInput()) # shinipsum::random_DT(nrow = 10, ncol = 10))
+  # Text summary of the gap analysis 
+  # Example of updating the text output
+  observeEvent(input$renderGapAnalaysis, { # Or any other event
+    # Generate the text you want to display
+    srs <- as.numeric(try(srsex()))|> round(digits = 2)
+    grs <- as.numeric(try(grsex_score()))|> round(digits = 2)
+    ers <- as.numeric(try(ersex_score())) |> round(digits = 2)
+    fcs <- as.numeric(try(mean(c(srs,grs,ers), na.rm = TRUE) |> round(digits = 2)))
+    bSize <- input$bufferSize
+    points <- gapPoints()
+    totalPoints <- nrow(points)
+    referncePoints <- nrow(points[points$`Current Germplasm Type` == "H",])
+    germplasmPoints <- nrow(points[points$`Current Germplasm Type` == "G",])
+    species <- points$`Taxon Name`[1]
+    output$map_text_output <- renderPrint({
+      HTML(paste(
+        "<p>Gap Analysis summary results for :", species, "</p>", # Paragraphs for formatting
+        "<p>Reference points: ", referncePoints, "          Germplasma points: ", germplasmPoints, "<br>",
+        "<p> Buffer size: ", bSize , "<br>",
+        " SRSex : ", srs, " -- ", " GRSex : ", grs, " -- "," ERSex : ", ers ,
+        "FCSex : ",fcs,"</p>" 
+      ))
+    })
+  })
+   
+  # develop the popup 
+  observeEvent(input$createBuffersGap, {
+    # print(combined_data())
+    Sys.sleep(1)
+    ## show the popup selection
+    showModal(
+      modalDialog(
+        title = "Run the gap analysis",
+        "The following step is going to take a minute to run. Maybe more depending on the number of locations. If your ready press yes.",
+        "New map elements will appear once process is complete. Select outside of this box when you see those changes to continue.",
+        footer = tagList(
+          actionButton( "renderGapAnalaysis","Yes"),
+          actionButton("return2", "Return to Gap Analysis Page"),
+        ),
+        size = "l",
+        easyClose = TRUE
+      )
+    )
+  })
+  # return to Page 1 when "Return" is clicked
+  observeEvent(input$return2, {
+    removeModal() # Remove the modal dialog
+  })
+  
 
+# generate the report  ---------------------------------------------------
+    output$downloadReport <- downloadHandler(
+      filename = function() {
+        taxon <- gapPoints()$`Taxon Name`[1]
+        # debug_msg("pet_report_dl")
+        paste0(taxon,"_gap_analysis_", Sys.Date(), ".html")
+      },
+      content = function(file) {
+        rmarkdown::render("reportTemplate.Rmd",
+                          output_file = file, 
+                          params = list(
+                              points = gapPoints(),
+                              pointsBuffer = pointsBuffer(),
+                              ersex = ersex_missingEcos(),
+                              grsex = grsex_buffers(),
+                              srsScore =  srsex(),
+                              ersScore = ersex_score(),
+                              grsScore = grsex_score(),
+                              bufferDist = bufferDist()
+                          ),
+                          envir = new.env(),
+                          intermediates_dir = tempdir())
+      }
+    )
+  
+  
+  
+  # test print  --------------------------------------------------------------
+
+  # output$testPrint <- renderText({ input$txt })
 }
 
 
