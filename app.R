@@ -263,7 +263,7 @@ server <- function(input, output, session) {
         data = gbifPoints,
         layerId = ~index,
         group = "GBIF",
-        radius = 4,
+        radius = 5,
         color = "white",
         fillColor = ~color,
         stroke = TRUE,
@@ -294,7 +294,7 @@ server <- function(input, output, session) {
         data = gbifPoints,
         layerId = ~index,
         group = "GBIF",
-        radius = 4,
+        radius = 5,
         color = "white",
         fillColor = ~color,
         stroke = TRUE,
@@ -335,7 +335,7 @@ server <- function(input, output, session) {
         addCircleMarkers(
           data = gbifPoints[gbifPoints$index == click$id, ],
           layerId = ~index,
-          radius = 4,
+          radius = 5,
           color = "red",
           fillOpacity = 0.8,
           stroke = FALSE,
@@ -351,7 +351,7 @@ server <- function(input, output, session) {
         addCircleMarkers(
           data = gbifPoints[gbifPoints$index %in% selectedGBIF$markers, ],
           layerId = ~index,
-          radius = 4,
+          radius = 5,
           color = "red",
           fillOpacity = 0.8,
           stroke = FALSE,
@@ -401,7 +401,9 @@ server <- function(input, output, session) {
     }
     # Read the uploaded CSV file
     uploaded_data <- vroom::vroom(inFile$datapath, delim = ",")
-    
+    # remove any empty rows from the document 
+    uploaded_data <- uploaded_data[!is.na(uploaded_data$`Accession Number`), ]
+
     # assign id as character 
     uploaded_data$`Accession Number` <- as.character( uploaded_data$`Accession Number`)
     uploaded_data$index <- seq(from = 1000, to = 1000 +nrow(uploaded_data) - 1, by = 1)
@@ -437,7 +439,7 @@ server <- function(input, output, session) {
         data = uploadPoints,
         layerId = ~index,
         group = "Upload",
-        radius = 4,
+        radius = 5,
         color = "white",
         fillColor = ~color,
         stroke = TRUE,
@@ -467,7 +469,7 @@ server <- function(input, output, session) {
         data = uploadPoints,
         layerId = ~index,
         group = "Upload",
-        radius = 4,
+        radius = 5,
         color = "white",
         fillColor = ~color,
         stroke = TRUE,
@@ -497,7 +499,7 @@ server <- function(input, output, session) {
             data = uploadPoints |>
               dplyr::filter(index == uploadPoints$index[click$id]) ,
             layerId = ~index,
-            radius = 4,
+            radius = 5,
             color = "red",
             fillOpacity = 0.8,
             stroke = FALSE,
@@ -513,7 +515,7 @@ server <- function(input, output, session) {
         addCircleMarkers(
           data = uploadPoints[uploadPoints$index %in% selectedUpload$markers, ],
           layerId = ~index,
-          radius = 4,
+          radius = 5,
           color = "red",
           fillOpacity = 0.8,
           stroke = FALSE,
@@ -667,6 +669,8 @@ server <- function(input, output, session) {
   gapPoints <- eventReactive(input$addGapPoints, {
     print("gapPoints")
     req(combined_data())
+    # 
+    
     # generate spatial feature
     createSpatialObject(combined_data())|>
       dplyr::mutate(
@@ -1063,6 +1067,8 @@ server <- function(input, output, session) {
     srs <- as.numeric(try(srsex()))|> round(digits = 2)
     grs <- as.numeric(try(grsex_score()))|> round(digits = 2)
     ers <- as.numeric(try(ersex_score())) |> round(digits = 2)
+    fcs <- as.numeric(try(mean(c(srs,grs,ers), na.rm = TRUE) |> round(digits = 2)))
+    bSize <- input$bufferSize
     points <- gapPoints()
     totalPoints <- nrow(points)
     referncePoints <- nrow(points[points$`Current Germplasm Type` == "H",])
@@ -1072,7 +1078,9 @@ server <- function(input, output, session) {
       HTML(paste(
         "<p>Gap Analysis summary results for :", species, "</p>", # Paragraphs for formatting
         "<p>Reference points: ", referncePoints, "          Germplasma points: ", germplasmPoints, "<br>",
-        " SRSex : ", srs, " -- ", " GRSex : ", grs, " -- "," ERSex : ", ers , "</p>" 
+        "<p> Buffer size: ", bSize , "<br>",
+        " SRSex : ", srs, " -- ", " GRSex : ", grs, " -- "," ERSex : ", ers ,
+        "FCSex : ",fcs,"</p>" 
       ))
     })
   })
@@ -1086,7 +1094,7 @@ server <- function(input, output, session) {
       modalDialog(
         title = "Run the gap analysis",
         "The following step is going to take a minute to run. Maybe more depending on the number of locations. If your ready press yes.",
-        "New map elements will appear once process is complete. Select outside of this box when you see those chances to continue.",
+        "New map elements will appear once process is complete. Select outside of this box when you see those changes to continue.",
         footer = tagList(
           actionButton( "renderGapAnalaysis","Yes"),
           actionButton("return2", "Return to Gap Analysis Page"),

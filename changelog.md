@@ -18,26 +18,39 @@ Versioning Nomenclature
 
 
 ## upcoming changes 
-- improved the error handling messages for gbif queries with no results 
-- test for all columns of interest from gbif and assign values to missing columns if needed
 - improve error handling and message for buffer objects if no g or no h points are present 
-- add plotly figure to the report 
 - determine how to get the shape icons into the report generate 
 - grammer edits 
 - general text edits 
 - need some error handling for cases where there are only G points 
 - error handling for cases where taxon names match 
 - expecting to need to increase point object size on the data analysis leaflet map
-- need a lot more testing of the report generation to understand how and why it might fail 
+- error handling for cases when download gbif button is selected before the species or taxon rank are selected
+
+
+## Gamma 2.1.4
+update from 2025-02-21 
+address feedback from the internal review process 
+
+*added*
+- added condition in the upload to remove any rows from feature with no accession number
+- report improvements 
+  - improved the text report 
+  - adjust map size and legend positions for narrower screens 
+  - add plotly figure to the report 
+
+*Changed*
+- matched the definition on the report to those on the about page
 
 
 ## Gamma 2.1.3 
 update from 2025-02-03
 
-
 added 
 - the application now generates a downloadable report 
 - increase the number of species available 
+- test for all columns of interest from gbif and assign values to missing columns if needed
+- improved the error handling messages for gbif queries with no results 
 
 
 ## Gamma 2.1.2

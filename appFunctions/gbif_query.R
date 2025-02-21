@@ -85,6 +85,7 @@ query_gbif_occ <- function(taxonkey,
     names(output) <- c("Accession Number","Taxon Name","Current Germplasm Type",
                        "Collection Date","Latitude","Longitude","Locality",
                        "Collector","issues")    
+    output$`Taxon Name` <- taxonkey
     # add some data for map doesn't fail 
     output[1, 5:6] <- c(0,0) 
     return(output)     # need to add a print statement to the UI 

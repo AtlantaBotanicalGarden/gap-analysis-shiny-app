@@ -52,7 +52,6 @@ createSpatialObject <- function(table){
     dplyr::filter(!is.na(Longitude))|>
     dplyr::filter(!is.na(Latitude))
   
-  
   # generate spatial object
   points <- data |>
     sf::st_as_sf(coords = c("Longitude","Latitude"), crs = 4326, remove = FALSE)|>

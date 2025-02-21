@@ -17,9 +17,9 @@ aboutPage<-function(){
        
        
        h3("Definitions of conservation gap analysis scores"),
-       p(strong("The Sampling Representativeness Score ") ,em("ex situ"), "(SRS ex) calculates the ratio of germplasm accessions (G) available in ", em("ex situ")," repositories to reference (H) records for each taxon, making use of all compiled records irrespective of whether they include coordinates."),
-       p(strong("The Geographic Representativeness Score ") ,em("ex situ"), "(GRS ex situ) uses 50-km-radius buffers created around each G collection coordinate point to estimate geographic areas already well collected within the potential distribution models of each taxon and then calculates the proportion of the potential distribution model covered by these buffers."),
-       p(strong("The Ecological Representativeness Score ") ,em("ex situ"), "(ERS ex situ) calculates the proportion of terrestrial ecoregions (25) represented within the G buffered areas out of the total number of ecoregions occupied by the potential distribution model."),
+       p(strong("The Sampling Representativeness Score ") ,em("ex situ"), "(SRS ex situ) calculates the ratio of germplasm accessions (G) available in ex situ repositories to reference/voucher (H) records for each taxon."),
+       p(strong("The Geographic Representativeness Score ") ,em("ex situ"), "(GRS ex situ) uses a user defined km-radius buffer created around each G collection coordinate point to estimate geographic areas already well collected within the distribution of each taxon, also created using buffers around H reference points. This is calculated as the proportion of the distribution covered by the G buffers"),
+       p(strong("The Ecological Representativeness Score ") ,em("ex situ"), "(ERS ex situ) calculates the proportion of terrestrial ecoregions represented within the G buffered areas out of the total number of ecoregions occupied by the potential distribution."),
        p(strong("The  Final Conservation Score "), em("ex situ")," (FCS ex situ) was derived by calculating the average of the three ",em("ex situ")," conservation metrics."),
   ),
   fluidRow(
