@@ -395,12 +395,50 @@ server <- function(input, output, session) {
   dataUpload <- reactiveVal(NULL)
   
   observeEvent(input$upload, {
+    ## Testing replacement with native Shiny data validation tools
+    ## from shiny documentation
+    ## https://shiny.posit.co/r/reference/shiny/latest/fileinput.html
+    ## for some reason validate(need()) isn't stopping the function when it should
+    
+    ## currently for some reason the fileInput.accept parameter
+    ## is not correctly defaulting to .csv in the file picker
+    ## that will need to be addressed eventually - jonathan
+    
     inFile <- input$upload
-    if(is.null(inFile)){
-      return(NULL)
+    
+    ## Custom logic developed by Chris, may have to revert to this
+    #if(is.null(inFile)){
+    #  return(NULL)
+    #}
+    
+    # Official Shiny documentation logic for Testing for NULL input
+    req(inFile)
+    
+    #Rejecting non-supported datatypes
+    ext <- tools::file_ext(inFile$datapath)
+    if(ext != "csv") {
+      validate(need(FALSE, "Please upload a csv file"))
+      
+      ## It seems as if altering the fileUpload button progress bar requires inserting JS
+      ## a pop-up notification will have to do in the meantime
+      showNotification(
+        "Please upload a CSV file only. Other file types are not currently supported.",
+        type = "error",
+        duration = NULL  # Stays until user dismisses it (so it is not missed)
+      )
+      
+      return(NULL)  # Extra safety
+      stop("Invalid file type")  # Should never reach here
     }
+    
+    #validate(need(ext == "csv", "Please upload a csv file"))
+    
     # Read the uploaded CSV file
     uploaded_data <- vroom::vroom(inFile$datapath, delim = ",")
+    
+    ## troubleshooting missing Accession Number column BUG ##
+    #print(names(uploaded_data))
+    
     # remove any empty rows from the document 
     uploaded_data <- uploaded_data[!is.na(uploaded_data$`Accession Number`), ]
 

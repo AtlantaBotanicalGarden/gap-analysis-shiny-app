@@ -47,7 +47,10 @@ dataEvaluation <- function(id){
           accordion_panel(
             "3. Upload Your own data",
             p(tags$a(href = "https://docs.google.com/spreadsheets/d/1BeDUBCg2BJ1DYpW47bxYH8p8CJAVqgM5rafyz81RoOc/edit?usp=sharing", "View Data Format Example", target = "_blank")),
-            fileInput("upload", "Upload a file"),
+            fileInput(inputId = "upload",
+                      label = "Upload a file",
+                      multiple = FALSE,
+                      accept = ".csv"),
             tags$p("Testing for expected column names"),
             textOutput("validateColNames"),
             actionButton("uploadToMap", "add uploaded to map")
