@@ -1,7 +1,7 @@
-
 ###
 # 
 library(terra)
+library(leaflet)
 # lakes layer 
 lakes <- terra::vect("dataToPreProcess/water/ne_10m_lakes/ne_10m_lakes.shp") 
 # land layers 
