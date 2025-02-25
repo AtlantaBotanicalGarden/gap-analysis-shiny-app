@@ -24,8 +24,22 @@ Versioning Nomenclature
 - general text edits 
 - need some error handling for cases where there are only G points 
 - error handling for cases where taxon names match 
-- expecting to need to increase point object size on the data analysis leaflet map
 - error handling for cases when download gbif button is selected before the species or taxon rank are selected
+
+
+## GAMMA 2.1.5 
+update 2025-02-24 
+Should be the stable version used for the March training 
+
+*added*
+- two new genera 
+- Error handling for if someone attempts to upload a non CSV file 
+
+
+*changed* 
+- increased point object size on the data analysis leaflet map
+- moved render gbif script to function 
+
 
 
 ## Gamma 2.1.4
