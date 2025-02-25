@@ -1,12 +1,14 @@
 pacman::p_load(dplyr, readr)
 # read in data
-data <- read_csv("dataToPreProcess/Plantae_Taxon.csv") 
+data <- read_csv("~/trueNAS/work/extraData/Plantae_Taxon.csv") 
 # filter ot genus of interest
 filterData <- data |>
   dplyr::filter(genus %in% c(
     "Acer",
     "Pinus",
     "Cycas",
+    "Ceratozamia",
+    "Hamamelis",
     "Dipterocarpus",
     "Diospyros",
     "Erica",

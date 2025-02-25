@@ -917,7 +917,7 @@ server <- function(input, output, session) {
                   fillOpacity = 0.5,
                   options = pathOptions(pane = "grsGap"))|>
       addLegend(
-        position = "bottomleft",
+        position = "topright",
         group = "GRS gaps",
         colors = grsexColor,
         labels = c("GRS gaps")

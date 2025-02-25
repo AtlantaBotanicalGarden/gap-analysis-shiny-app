@@ -250,13 +250,13 @@ map2 <- map2 |>
         labels = c("Reference", "Germplasm")
       )|>
       addLegend(
-        position = "topright",
+        position = "bottomleft",
         group = "GRS gaps",
         colors = grsexColor,
         labels = c("GRS gaps")
       )|>
       addLegend(
-        position = "topright",
+        position = "bottomleft",
         group = "ERS gaps",
         colors = ersexColor,
         labels = c("ERS gaps")
