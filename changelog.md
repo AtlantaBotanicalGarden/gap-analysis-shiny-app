@@ -26,14 +26,23 @@ Versioning Nomenclature
 - error handling for cases where taxon names match 
 - error handling for cases when download gbif button is selected before the species or taxon rank are selected
 
+## GAMMA 2.1.6
+update 2025-02-28
+updated from the stress test event 
+
+changes
+- forces character type on date column  
+- more req() statements within reactive function to prevent common error messages in logs 
+- removed issue causing the gap points error s
 
 ## GAMMA 2.1.5 
-update 2025-02-24 
+update 2025-02-24
 Should be the stable version used for the March training 
 
 *added*
 - two new genera 
 - Error handling for if someone attempts to upload a non CSV file 
+
 
 
 *changed* 

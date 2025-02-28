@@ -112,20 +112,23 @@ server <- function(input, output, session) {
     # define selector
     selectInput("speciesSelect", "Select a species", 
                 choices = sort(genusData$specificEpithet),
-                selected = )
+                selected = "acuminata")
   })
   ### UI select variaty/subspec
   output$taxonRank = renderUI({
+    req(input$speciesSelect)
     # filter the data
     filteredData <- gbifBackbone |>
       dplyr::filter(genus == as.character(input$genusSelect)) |>
       dplyr::filter(specificEpithet == as.character(input$speciesSelect))
     # define selector
     selectInput("taxonRank", "Select a taxon rank",
-                choices = filteredData$taxonRank, selected = )
+                choices = filteredData$taxonRank, 
+                selected = "species")
   })
   #### UI select sub species feature
   output$speciesInfraspecific = renderUI({
+    req(input$taxonRank)
     # filter the data
     filteredData2 <- gbifBackbone |>
       dplyr::filter(genus == as.character(input$genusSelect)) |>
@@ -136,6 +139,7 @@ server <- function(input, output, session) {
     selectInput("speciesInfraspecific", "Select a infraspecific epithet", choices = filteredData2$infraspecificEpithet, selected = )
   })
   output$currentSpecies = renderText({
+    req(input$taxonRank)
     name <- paste0("Current Taxon: ", input$genusSelect, " ",tolower(input$speciesSelect), " ")
     if(input$taxonRank != "species"){
       name <- paste0(name, tolower(input$taxonRank), " ", tolower(input$speciesInfraspecific))
@@ -209,7 +213,9 @@ server <- function(input, output, session) {
      initialPull$`Accession Number` <- as.character(initialPull$`Accession Number`)
      initialPull$source <- "GBIF"
      initialPull$index <- seq(from = 20000, to = 20000+nrow(initialPull)-1, by = 1 )
-
+     # force character on collection date
+     initialPull$`Collection Date` <- as.character(initialPull$`Collection Date`)
+     
      gbifData(initialPull)
    })
  # 
@@ -446,6 +452,9 @@ server <- function(input, output, session) {
     uploaded_data$`Accession Number` <- as.character( uploaded_data$`Accession Number`)
     uploaded_data$index <- seq(from = 1000, to = 1000 +nrow(uploaded_data) - 1, by = 1)
     uploaded_data$source <- "upload"
+    # force date to character 
+    uploaded_data$`Collection Date` <- as.character(uploaded_data$`Collection Date`)
+    print(str(uploaded_data))
     # Update the reactive value with the uploaded data
     dataUpload(uploaded_data)    
   })
@@ -876,7 +885,7 @@ server <- function(input, output, session) {
   
   ## srs ex ------------------------------------------------------------------
   srsex <- reactive({
-    require(gapPoints())
+    req(gapPoints())
     print("srsex")
     p1 <- gapPoints()
     # select g points
