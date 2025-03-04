@@ -322,7 +322,9 @@ DT::datatable(colSelect,
 **Germplasm Records (G)** : Occurrences in which a living sample (via plant or seed) is present in an (*ex situ*), conservation system (i.e., botanical garden, seed bank, genebank, etc.).
 
 **Reference Records (H)** : Occurrences that have a supporting herbarium or other reference record.
-    ### Sampling Representativeness Score (SRS)
+
+
+### Sampling Representativeness Score (SRS)
 
 **Ex situ**: The Sampling Representativeness Score *ex situ* (SRS ex situ) calculates the ratio of germplasm accessions (G) available in *ex situ* repositories to reference/voucher (H) records for each taxon.
 
