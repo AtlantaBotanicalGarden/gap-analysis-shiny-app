@@ -112,8 +112,8 @@ plotDF <- data.frame(class = c(
 
 # assign values based on the presence of specific output values
 plotDF$score[1] <- srs
-plotDF$score[2] <- grs
-plotDF$score[3] <- ers
+plotDF$score[2] <- ers
+plotDF$score[3] <- grs
 # assign the fcsex score
 plotDF$score[4] <- fcs
 
