@@ -105,15 +105,15 @@ species <- points$`Taxon Name`[1]
 # define the base table
 plotDF <- data.frame(class = c(
   "Sampling Representativeness Score",
-  "Ecological Representativeness Score",
   "Geographic Representativeness Score",
+  "Ecological Representativeness Score",
   "Final Representativeness Score"),
   score = c(0,0,0,0))
 
 # assign values based on the presence of specific output values
 plotDF$score[1] <- srs
-plotDF$score[2] <- ers
-plotDF$score[3] <- grs
+plotDF$score[2] <- grs
+plotDF$score[3] <- ers
 # assign the fcsex score
 plotDF$score[4] <- fcs
 
@@ -271,8 +271,8 @@ map2
 #define the display order of the plot
 xform <- list(categoryorder = "array",
               categoryarray = c("Sampling Representativeness Score",
-                                "Ecological Representativeness Score",
                                 "Geographic Representativeness Score",
+                                "Ecological Representativeness Score",
                                 "Final Representativeness Score"))
 
 # generate a plotly figure

@@ -5,7 +5,7 @@ account: atlantabg
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 11673748
-bundleId: 9872551
+bundleId: 9895156
 url: https://atlantabg.shinyapps.io/GAMMA/
 asMultiple: FALSE
 asStatic: FALSE

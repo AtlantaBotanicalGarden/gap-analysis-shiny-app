@@ -1,12 +1,12 @@
-name: gamma2
-title: gamma2
+name: gamm3
+title: gamm3
 username: atlantabg
 account: atlantabg
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
-appId: 13660697
-bundleId: 9895080
-url: https://atlantabg.shinyapps.io/gamma2/
+appId: 14163784
+bundleId: 9895135
+url: https://atlantabg.shinyapps.io/gamm3/
 version: 1
 asMultiple: FALSE
 asStatic: FALSE

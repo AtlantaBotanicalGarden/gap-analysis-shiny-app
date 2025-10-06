@@ -108,11 +108,14 @@ server <- function(input, output, session) {
   output$speciesSelect = renderUI({
     # filter the data
     genusData <- gbifBackbone |>
-      dplyr::filter(genus == as.character(input$genusSelect))
+      dplyr::filter(genus == as.character(input$genusSelect)) 
+    # specific species 
+    ### still need to trouble shoot the number of species being presentec
+    
     # define selector
     selectInput("speciesSelect", "Select a species", 
                 choices = sort(genusData$specificEpithet),
-                selected = "acuminata")
+                selected = )
   })
   ### UI select variaty/subspec
   output$taxonRank = renderUI({
@@ -158,6 +161,9 @@ server <- function(input, output, session) {
         dplyr::filter(genus == as.character(input$genusSelect)) |>
         dplyr::filter(specificEpithet == as.character(input$speciesSelect)) |>
         dplyr::filter(taxonRank == as.character(input$taxonRank))
+      # this is likely the issue with the prunus americana data pull. probably more then one 
+      # feature in the taxon list....
+      print(f1$taxonID)
       f1$taxonID[1]
     }else{
       f1 <- gbifBackbone |>
