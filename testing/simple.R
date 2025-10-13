@@ -7,17 +7,20 @@ landingUI <- function(id) {
   ns <- NS(id)
   tagList(
     tags$style(HTML("
+      /* ## MODIFIED: Hero section is now taller and has a wavy bottom clip-path */
       .hero-section {
         position: relative;
-        height: 60vh;
-        min-height: 400px;
+        /* Calculate height to fill space between header and footer */
+        height: calc(100vh - 145px); 
+        min-height: 500px;
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
         text-align: center;
         overflow: hidden;
-        clip-path: ellipse(120% 100% at 50% 0%);
+        /* This creates the curved/wavy bottom effect */
+        /*clip-path: ellipse(130% 100% at 50% 0%); */
       }
       .hero-image {
         position: absolute;
@@ -41,49 +44,12 @@ landingUI <- function(id) {
         max-width: 800px;
         padding: 20px;
       }
-      .content-section {
-        padding: 60px 20px;
-        text-align: center;
-      }
-      .features-container {
-        display: flex;
-        justify-content: center;
-        gap: 20px;
-        margin-top: 40px;
-        margin-bottom: 50px;
-        flex-wrap: wrap;
-        align-items: center;
-      }
-      .feature-box {
-        flex-basis: 280px;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-      }
-      .feature-box:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-      }
-      .feature-box img {
-        width: 100%;
-        height: 160px;
-        object-fit: cover;
-        border-radius: 4px;
-        margin-bottom: 15px;
-      }
-      .feature-arrow {
-        font-size: 2.5rem;
-        color: #cccccc;
-      }
-      .nav-buttons .btn {
-        margin: 0 10px;
-      }
+      
+      /* Original CSS for other elements */
       .top-nav-banner {
         background-color: #f8f9fa;
         padding: 10px 20px;
         border-bottom: 1px solid #dee2e6;
-        margin-bottom: 20px;
         display: flex;
         gap: 10px;
         align-items: center;
@@ -98,7 +64,6 @@ landingUI <- function(id) {
         padding: 20px;
         border-top: 1px solid #dee2e6;
         text-align: center;
-        margin-top: 50px;
       }
       .footer-banner img {
         height: 50px; /* Logo height */
@@ -106,6 +71,8 @@ landingUI <- function(id) {
         vertical-align: middle;
       }
     ")),
+    
+    # Only the first hero section remains
     div(class = "hero-section",
         tags$img(class = "hero-image", src="https://plus.unsplash.com/premium_photo-1690031000842-1ac0508f18b7?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1470"),
         div(class = "hero-overlay"),
@@ -113,48 +80,19 @@ landingUI <- function(id) {
             h1("GAMMA"),
             p("Observing the meta collection.", style="font-size: 1.2rem;")
         )
-    ),
-    div(class="container content-section",
-        # Feature Boxes
-        div(class="features-container",
-            div(class="feature-box",
-                tags$img(src="https://images.unsplash.com/photo-1516738901171-8eb4fc13bd20?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1470"),
-                h4("Gather your Data"),
-                p("Upload your datasets, compare against public data, and prepare them for analysis.")
-            ),
-            div(class="feature-arrow", HTML("&#8594;")),
-            div(class="feature-box",
-                tags$img(src="https://images.unsplash.com/photo-1730804518415-75297e8d2a41?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1462"),
-                h4("Find the gaps"),
-                p("Geographic gap analysis to locations to priortize collections.")
-            ),
-            div(class="feature-arrow", HTML("&#8594;")),
-            div(class="feature-box",
-                tags$img(src="https://plus.unsplash.com/premium_photo-1726754516964-7ee4209343a6?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1470"),
-                h4("Share the results"),
-                p("Export and share your findings")
-            )
-        ),
-        
-        # Navigation Buttons
-        div(class="nav-buttons",
-            actionButton(ns("go_da"), "Get Started", class="btn-primary btn-lg"),
-            actionButton(ns("go_about"), "Learn More", class="btn-info btn-lg")
-        )
     )
+    
+    ## MODIFICATION: The 'info-section' and 'feature-section' divs have been removed.
   )
 }
 
+# No changes below this line
+# ... (rest of the code is unchanged) ...
+
+# ---- Landing Page Server (simplified) ----
 landingServer <- function(id) {
   moduleServer(id, function(input, output, session) {
-    # Return a list of reactive expressions that fire on button clicks
-    return(
-      list(
-        go_da = reactive(input$go_da),
-        go_ga = reactive(input$go_ga),
-        go_about = reactive(input$go_about)
-      )
-    )
+    # No server logic needed
   })
 }
 
@@ -245,7 +183,19 @@ ui <- fluidPage(
   title = "GAMMA Shiny App",
   theme = bs_theme(version = 4, bootswatch = "litera"),
   
-  # A container for all UI
+  # Top navigation banner is ALWAYS visible
+  div(class="top-nav-banner",
+      div(class="brand", "GAMMA"),
+      actionButton("nav_da", "Data Analysis", class="btn-light"),
+      actionButton("nav_ga", "Gap Analysis", class="btn-light"),
+      actionButton("nav_about", "About", class="btn-light"),
+      conditionalPanel(
+        condition = "output.page !== 'landing'",
+        actionButton("go_home", "Home", class="btn-secondary")
+      )
+  ),
+  
+  # A container for the main page content
   div(
     # Conditional panel for the landing page (no sidebar)
     conditionalPanel(
@@ -253,19 +203,9 @@ ui <- fluidPage(
       landingUI("landing_page")
     ),
     
-    # Conditional panel for all other pages (with top nav banner and sidebar)
+    # Conditional panel for all other pages (with sidebar layout)
     conditionalPanel(
       condition = "output.page !== 'landing'",
-      
-      # Top navigation banner
-      div(class="top-nav-banner",
-          div(class="brand", "GAMMA"),
-          actionButton("nav_da", "Data Analysis", class="btn-light"),
-          actionButton("nav_ga", "Gap Analysis", class="btn-light"),
-          actionButton("nav_about", "About", class="btn-light"),
-          actionButton("go_home", "Home", class="btn-secondary")
-      ),
-      
       sidebarLayout(
         sidebarPanel(
           # Conditional controls now depend on output.page
@@ -330,20 +270,8 @@ server <- function(input, output, session) {
   outputOptions(output, "page", suspendWhenHidden = FALSE)
   
   # --- Navigation Event Handling ---
-  # 1. From Landing Page Buttons
-  landing_nav <- landingServer("landing_page")
+  landingServer("landing_page") # Call the module server
   
-  observeEvent(landing_nav$go_da(), {
-    currentPage("data_analysis")
-  })
-  observeEvent(landing_nav$go_ga(), {
-    currentPage("gap_analysis")
-  })
-  observeEvent(landing_nav$go_about(), {
-    currentPage("about")
-  })
-  
-  # 2. From Top Nav Banner Buttons
   observeEvent(input$go_home, {
     currentPage("landing")
   })
@@ -378,7 +306,6 @@ server <- function(input, output, session) {
   })
   
   # --- Reactive Inputs for Modules ---
-  # A single reactive expression for the dataset, based on the shared name
   sharedDataset <- reactive({
     switch(sharedDatasetName(), "iris" = iris, "mtcars" = mtcars, "trees" = trees)
   })
@@ -386,7 +313,6 @@ server <- function(input, output, session) {
   obsInput_ga <- reactive(input$obs_ga)
   
   # --- Initialize Module Servers ---
-  # Pass the single shared dataset reactive to both modules
   dataAnalysisServer("data_analysis_page", dataset = sharedDataset)
   gapAnalysisServer("gap_analysis_page", dataset = sharedDataset, obs = obsInput_ga)
   aboutServer("about_page")
@@ -394,4 +320,3 @@ server <- function(input, output, session) {
 
 # Run the application
 shinyApp(ui = ui, server = server)
-
