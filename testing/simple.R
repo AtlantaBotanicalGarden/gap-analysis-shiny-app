@@ -11,7 +11,7 @@ landingUI <- function(id) {
       .hero-section {
         position: relative;
         /* Calculate height to fill space between header and footer */
-        height: calc(100vh - 145px); 
+        height: calc(100vh - 125px); 
         min-height: 500px;
         display: flex;
         align-items: center;
@@ -20,7 +20,7 @@ landingUI <- function(id) {
         text-align: center;
         overflow: hidden;
         /* This creates the curved/wavy bottom effect */
-        /*clip-path: ellipse(130% 100% at 50% 0%); */
+        clip-path: ellipse(80% 40% at 50% 50%);
       }
       .hero-image {
         position: absolute;
